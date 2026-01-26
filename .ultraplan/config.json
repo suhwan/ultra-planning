@@ -1,17 +1,9 @@
 {
-  "version": "1.0.0",
+  "version": "0.1.0",
   "mode": "interactive",
   "depth": "standard",
-  "parallelization": {
-    "enabled": true,
-    "max_workers": 5
-  },
-  "workflow": {
-    "auto_verify": true,
-    "auto_commit": true,
-    "commit_docs": true
-  },
-  "model_profile": "balanced",
-  "created_at": "2026-01-26T08:04:12Z",
-  "project_name": null
+  "parallelization": true,
+  "max_workers": 5,
+  "commit_docs": true,
+  "model_profile": "balanced"
 }

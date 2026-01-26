@@ -19,7 +19,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 3: GSD 통합** - 문서 템플릿, Planner 에이전트
 - [x] **Phase 4: OMC 통합** - ralplan, Ultrapilot, 키워드 감지
 - [x] **Phase 5: OpenCode 재구현** - Ralph Loop 개선, Atlas 강제
-- [ ] **Phase 6: Claude Tasks 동기화** - PLAN.md ↔ Tasks API
+- [x] **Phase 6: Claude Tasks 동기화** - PLAN.md ↔ Tasks API
 - [ ] **Phase 7: CLI/슬래시 커맨드** - /ultraplan:* 명령어
 - [ ] **Phase 8: 통합 테스트** - E2E 워크플로우 검증
 
@@ -139,9 +139,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Sync module types and enhanced PLAN.md parser (TaskMapping, plan-parser.ts)
-- [ ] 06-02-PLAN.md — Task tool invocation mapper (task-mapper.ts, dependency-map.ts)
-- [ ] 06-03-PLAN.md — Task status to PLAN.md sync (status-sync.ts, frontmatter tracking)
+- [x] 06-01-PLAN.md — Sync module types and enhanced PLAN.md parser (TaskMapping, plan-parser.ts)
+- [x] 06-02-PLAN.md — Task tool invocation mapper (task-mapper.ts, dependency-map.ts)
+- [x] 06-03-PLAN.md — Task status to PLAN.md sync (status-sync.ts, frontmatter tracking)
 
 **Wave Structure:**
 - Wave 1: 06-01 (foundation - types and parser)
@@ -188,8 +188,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. GSD 통합 | 4/4 | Complete | 2026-01-26 |
 | 4. OMC 통합 | 5/5 | Complete | 2026-01-26 |
 | 5. OpenCode 재구현 | 4/4 | Complete | 2026-01-27 |
-| 6. Claude Tasks 동기화 | 0/3 | Ready | - |
-| 7. CLI/슬래시 커맨드 | 0/3 | Not started | - |
+| 6. Claude Tasks 동기화 | 3/3 | Complete | 2026-01-27 |
+| 7. CLI/슬래시 커맨드 | 0/3 | Ready | - |
 | 8. 통합 테스트 | 0/2 | Not started | - |
 
 ---

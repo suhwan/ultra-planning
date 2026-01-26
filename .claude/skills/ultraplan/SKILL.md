@@ -14,6 +14,7 @@ Document-driven workflow orchestration for Claude Code.
 | Command | Description |
 |---------|-------------|
 | `/ultraplan:new-project` | Initialize new project with PROJECT.md, ROADMAP.md |
+| `/ultraplan:plan-phase N` | Generate PLAN.md files for a specific phase |
 | `/ultraplan:status` | Show current project state and progress |
 
 ## Quick Start
@@ -21,11 +22,21 @@ Document-driven workflow orchestration for Claude Code.
 1. Run `/ultraplan:new-project` to initialize
 2. Describe your project when prompted
 3. Review generated PROJECT.md and ROADMAP.md
-4. Run `/ultraplan:status` to see progress
+4. Run `/ultraplan:plan-phase 1` to generate detailed plans for Phase 1
+5. Run `/ultraplan:status` to see progress
 
 ## Directory Structure
 
 ```
+.claude/
+├── commands/               # Command definitions
+│   ├── ultraplan-new-project.md
+│   ├── ultraplan-plan-phase.md
+│   └── ultraplan-status.md
+├── agents/                 # Agent definitions
+│   └── ultraplan-planner.md
+└── skills/ultraplan/       # Skill definition and templates
+
 .ultraplan/                 # Runtime state
 ├── config.json             # Project configuration
 ├── state/                  # Session state
