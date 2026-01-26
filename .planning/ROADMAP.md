@@ -24,11 +24,11 @@ Phase 1 ──> Phase 2 ──> Phase 2.5 ──> Phase 3 ──┬──> Phase
                                                            (Natural Lang)
 ```
 
-**Critical Path:** Phase 1 → 2 → 2.5 → 3 → 4 → 6 (Tasks API 검증이 핵심 리스크)
+**Critical Path:** Phase 1 → 2 → 2.5 → 3 → 4 → 6 (Tasks API verification is key risk)
 
 - [ ] **Phase 1: Foundation** - Document templates, CLI structure, and state management infrastructure
 - [ ] **Phase 2: Core Planning** - Planner agent generating PROJECT, ROADMAP, and PLAN documents
-- [ ] **Phase 2.5: Tasks API Spike** - INSERTED: Claude Tasks API 검증 PoC (핵심 리스크 완화)
+- [ ] **Phase 2.5: Tasks API Spike** - INSERTED: Claude Tasks API verification PoC (key risk mitigation)
 - [ ] **Phase 3: Sequential Execution** - Executor and Architect agents with verification gates
 - [ ] **Phase 4: Document-Task Sync** - PLAN to Claude Tasks bidirectional synchronization (core differentiator)
 - [ ] **Phase 5: Quality Layer** - Critic agent and ralplan iterative verification loop
@@ -46,14 +46,14 @@ Phase 1 ──> Phase 2 ──> Phase 2.5 ──> Phase 3 ──┬──> Phase
   2. STATE.md tracks current phase, plan, and status with visual progress bar
   3. Documents use XML tags for task structure and YAML frontmatter for metadata
   4. `.ultraplan/` directory structure exists with state, plans, and config subdirectories
-**Plans**: TBD (estimated 5-7 plans)
+**Plans**: 5 plans
 
 Plans:
-- [ ] 01-01: Directory structure and config schema
-- [ ] 01-02: Document templates (PROJECT.md, ROADMAP.md, PLAN.md)
-- [ ] 01-03: STATE.md implementation and update protocols
-- [ ] 01-04: XML task structure and YAML frontmatter schemas
-- [ ] 01-05: CLI command skeleton (/ultraplan:new-project, /ultraplan:status)
+- [ ] 01-01-PLAN.md - Create .ultraplan/ directory structure and config.json schema
+- [ ] 01-02-PLAN.md - Create document templates (PROJECT, ROADMAP, PLAN)
+- [ ] 01-03-PLAN.md - Create STATE.md template and update protocols
+- [ ] 01-04-PLAN.md - Document YAML frontmatter and XML task schemas
+- [ ] 01-05-PLAN.md - Create SKILL.md and CLI command skeletons
 
 ### Phase 2: Core Planning
 **Goal**: Generate complete planning documents from user input via Planner agent
@@ -202,7 +202,7 @@ Phases execute in numeric order: 1 → 2 → 2.5 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/5 | Not started | - |
+| 1. Foundation | 0/5 | Planned | - |
 | 2. Core Planning | 0/5 | Not started | - |
 | 2.5. Tasks API Spike | 0/3 | Not started | - |
 | 3. Sequential Execution | 0/8 | Not started | - |
@@ -214,5 +214,6 @@ Phases execute in numeric order: 1 → 2 → 2.5 → 3 → 4 → 5 → 6 → 7
 ---
 *Roadmap created: 2026-01-26*
 *Roadmap revised: 2026-01-26 (Architect review)*
+*Phase 1 planned: 2026-01-26*
 *Depth: comprehensive (8 phases, 49 estimated plans)*
 *Coverage: 16/16 v1 requirements mapped*
