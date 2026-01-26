@@ -32,5 +32,8 @@ export * from './loops/index.js';
 // Recovery module (error handling with rollback)
 export * from './recovery/index.js';
 
+// Sync module (Phase 6: Claude Tasks synchronization)
+export * from './sync/index.js';
+
 // Placeholder export to make the module valid
 export const VERSION = '0.1.0';
