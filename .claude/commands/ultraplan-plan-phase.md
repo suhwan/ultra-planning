@@ -29,13 +29,13 @@ Check that all requirements are met before planning:
 
 ```bash
 # Check ROADMAP.md exists
-test -f .ultraplan/ROADMAP.md || echo "ERROR: ROADMAP.md not found. Run /ultraplan:new-project first."
+test -f .planning/ROADMAP.md || echo "ERROR: ROADMAP.md not found. Run /ultraplan:new-project first."
 
 # Check PROJECT.md exists
-test -f .ultraplan/PROJECT.md || echo "ERROR: PROJECT.md not found. Run /ultraplan:new-project first."
+test -f .planning/PROJECT.md || echo "ERROR: PROJECT.md not found. Run /ultraplan:new-project first."
 
 # Validate phase number exists in ROADMAP.md
-grep -q "Phase ${phase_number}:" .ultraplan/ROADMAP.md || echo "ERROR: Phase ${phase_number} not found in ROADMAP.md"
+grep -q "Phase ${phase_number}:" .planning/ROADMAP.md || echo "ERROR: Phase ${phase_number} not found in ROADMAP.md"
 ```
 
 **Prerequisite Decision Matrix:**
@@ -45,7 +45,7 @@ grep -q "Phase ${phase_number}:" .ultraplan/ROADMAP.md || echo "ERROR: Phase ${p
 | ROADMAP.md missing | Stop with error: "Run /ultraplan:new-project first" |
 | PROJECT.md missing | Stop with error: "Run /ultraplan:new-project first" |
 | Phase number not in ROADMAP.md | Stop with error: "Phase X not found in ROADMAP.md" |
-| Prior phases not planned | Warn: "Prior phases not planned yet. Consider planning in sequence." Continue anyway. |
+| Prior phases not planned | **Auto-proceed:** Warn but continue (unattended mode) |
 | All prerequisites met | Proceed to Step 2 |
 
 ### Step 2: Load Phase Context
@@ -54,16 +54,20 @@ Gather all context needed for planning this phase:
 
 ```bash
 # Read PROJECT.md for requirements and constraints
-cat .ultraplan/PROJECT.md
+cat .planning/PROJECT.md
 
 # Read ROADMAP.md for phase definition
-cat .ultraplan/ROADMAP.md
+cat .planning/ROADMAP.md
 
 # Read STATE.md for current progress
-cat .ultraplan/STATE.md
+cat .planning/STATE.md
+
+# Find phase directory with zero-padded or unpadded names
+PADDED_PHASE=$(printf "%02d" ${phase_number})
+PHASE_DIR=$(ls -d .planning/phases/${PADDED_PHASE}-* .planning/phases/${phase_number}-* 2>/dev/null | head -1)
 
 # Check for existing PLAN.md files in this phase
-ls -la .ultraplan/plans/${phase_number}-*.md 2>/dev/null
+ls -la ${PHASE_DIR}/*.md 2>/dev/null
 ```
 
 **Context Assembly:**
@@ -80,39 +84,55 @@ ls -la .ultraplan/plans/${phase_number}-*.md 2>/dev/null
 
 Invoke the ultraplan-planner agent in PHASE-PLANNING mode:
 
+```bash
+# Extract phase information
+PHASE_GOAL=$(sed -n "/^### Phase ${phase_number}:/,/^### Phase/p" .planning/ROADMAP.md | \
+  grep "^**Goal**:" | sed 's/^**Goal**: //')
+
+# Extract success criteria
+SUCCESS=$(sed -n "/^### Phase ${phase_number}:/,/^### Phase/p" .planning/ROADMAP.md | \
+  sed -n '/^**Success Criteria/,/^**Plans/p' | head -n -1)
+
+# Extract dependencies
+DEPENDS=$(sed -n "/^### Phase ${phase_number}:/,/^### Phase/p" .planning/ROADMAP.md | \
+  grep "^**Depends on**:" | sed 's/^**Depends on**: //')
+
+# Read PROJECT.md context
+PROJECT_CONTEXT=$(cat .planning/PROJECT.md)
+```
+
 ```javascript
 Task(
   subagent_type="ultraplan-planner",
   model="opus",
   prompt="""
-You are planning Phase {phase_number}: {phase_name}.
+You are planning Phase ${phase_number}: ${PHASE_GOAL}
 
 ## Mode
 PHASE-PLANNING (not NEW-PROJECT)
 
 This is phase-level planning. Generate 2-3 PLAN.md files for this phase.
 
-## Phase Goal
-{phase_goal_from_roadmap}
+## Phase Definition
+**Goal:** ${PHASE_GOAL}
+**Depends on:** ${DEPENDS}
 
 ## Success Criteria
-{success_criteria_from_roadmap}
-
-## Requirements
-{requirements_from_project_md}
-
-## Dependencies
-{dependencies_from_roadmap}
+${SUCCESS}
 
 ## Context from PROJECT.md
-{relevant_sections_from_project_md}
+${PROJECT_CONTEXT}
+
+## Output Location
+Write PLAN.md files to: ${PHASE_DIR}/
+Naming: ${phase_number}-01-PLAN.md, ${phase_number}-02-PLAN.md, etc.
 
 ## Instructions
 
 1. **Break Phase into 2-3 Task Groups (PLAN.md files):**
    - Each PLAN.md should represent a cohesive unit of work (30-90 minutes total)
    - Group related tasks together (e.g., "Templates", "Agent Logic", "Integration")
-   - Name plans descriptively: {phase}-01-templates.md, {phase}-02-agent-logic.md
+   - Name plans descriptively: ${phase_number}-01-{name}.md, ${phase_number}-02-{name}.md
 
 2. **Apply Task Decomposition:**
    - Each task should take 15-60 minutes for an implementer
@@ -131,20 +151,21 @@ This is phase-level planning. Generate 2-3 PLAN.md files for this phase.
    - Derive: truths (observable conditions), artifacts (specific file paths), key_links (critical integrations)
 
 5. **Write PLAN.md files:**
-   - Location: .ultraplan/plans/{phase_number}-01-{name}.md, {phase_number}-02-{name}.md, etc.
+   - Location: ${PHASE_DIR}/${phase_number}-01-{name}.md, ${phase_number}-02-{name}.md, etc.
    - Follow standard PLAN.md structure (see ultraplan-planner.md)
    - Use XML task format with name, files, action, verify, done fields
 
 ## Output
 
 Generate files:
-- .ultraplan/plans/{phase_number}-01-{descriptive_name}.md
-- .ultraplan/plans/{phase_number}-02-{descriptive_name}.md
-- .ultraplan/plans/{phase_number}-03-{descriptive_name}.md (if needed)
+- ${PHASE_DIR}/${phase_number}-01-{descriptive_name}.md
+- ${PHASE_DIR}/${phase_number}-02-{descriptive_name}.md
+- ${PHASE_DIR}/${phase_number}-03-{descriptive_name}.md (if needed)
 
 Each PLAN.md must include:
+- Frontmatter with phase, plan, type, wave, depends_on, files_modified, autonomous
 - Context section explaining purpose
-- Tasks organized by waves
+- Tasks organized by waves using <task> XML elements
 - must_haves section (truths, artifacts, key_links)
 - Verification checklist
 
@@ -167,29 +188,16 @@ Begin planning now.
 
 | Variable | Extraction Method | Example |
 |----------|-------------------|---------|
-| `{phase_number}` | User input | `02` |
-| `{phase_name}` | Grep from ROADMAP.md | `core-planning` |
-| `{phase_goal_from_roadmap}` | Grep `Phase X: Goal` | "System can generate PROJECT.md, ROADMAP.md, PLAN.md from interview context" |
-| `{success_criteria_from_roadmap}` | Grep `Phase X: Success Criteria` | Multi-line bullet list |
-| `{requirements_from_project_md}` | Grep `Requirements` section | "REQ-01, REQ-02, REQ-03" |
-| `{dependencies_from_roadmap}` | Grep `Phase X: Depends on` | "Phase 01" |
-| `{relevant_sections_from_project_md}` | Read PROJECT.md | Full text |
+| `${phase_number}` | User input | `02` |
+| `${PHASE_GOAL}` | sed from ROADMAP.md | "System can generate PROJECT.md, ROADMAP.md, PLAN.md from interview context" |
+| `${SUCCESS}` | sed from ROADMAP.md | Multi-line bullet list |
+| `${DEPENDS}` | sed from ROADMAP.md | "Phase 01" |
+| `${PROJECT_CONTEXT}` | cat PROJECT.md | Full text |
+| `${PHASE_DIR}` | ls with pattern matching | `.planning/phases/07-cli-commands` |
 
 **Extraction Commands:**
 
-```bash
-# Extract phase name
-PHASE_NAME=$(grep -A 1 "^### Phase ${phase_number}:" .ultraplan/ROADMAP.md | tail -1 | sed 's/^**Goal**: //')
-
-# Extract phase goal
-PHASE_GOAL=$(grep "^**Goal**:" .ultraplan/ROADMAP.md | grep -A 1 "Phase ${phase_number}:")
-
-# Extract success criteria
-SUCCESS_CRITERIA=$(sed -n "/^### Phase ${phase_number}:/,/^### Phase/p" .ultraplan/ROADMAP.md | grep -A 20 "Success Criteria")
-
-# Extract requirements
-REQUIREMENTS=$(grep "Requirements: REQ-" .ultraplan/ROADMAP.md | grep "Phase ${phase_number}")
-```
+These are executed in Step 2 before spawning the Planner agent (see Step 3 code block above).
 
 ### Step 4: Display Summary
 
@@ -199,12 +207,17 @@ After Planner agent completes, show summary to user:
 Planning complete for Phase {phase_number}: {phase_name}
 
 Generated PLAN.md files:
-- .ultraplan/plans/{phase_number}-01-{name}.md ({N} tasks, {M} waves)
-- .ultraplan/plans/{phase_number}-02-{name}.md ({N} tasks, {M} waves)
-- .ultraplan/plans/{phase_number}-03-{name}.md ({N} tasks, {M} waves)
+- ${PHASE_DIR}/{phase_number}-01-{name}.md ({N} tasks, {M} waves)
+- ${PHASE_DIR}/{phase_number}-02-{name}.md ({N} tasks, {M} waves)
+- ${PHASE_DIR}/{phase_number}-03-{name}.md ({N} tasks, {M} waves)
 
 Total tasks: {total}
 Estimated time: {estimate} (based on 15-60 min per task)
+
+## After Plan Generation
+
+Tasks from generated PLAN.md files are registered in Claude Tasks API
+for execution tracking. Use `/ultraplan:execute {plan}` to begin execution.
 
 Next: Execute plans sequentially or use /ultraplan:status to see progress.
 ```
@@ -228,8 +241,8 @@ ESTIMATE=$((TASK_COUNT * 30))
 |----------------|------------------|-----------------|
 | ROADMAP.md missing | `test -f .ultraplan/ROADMAP.md` fails | Display error: "Run /ultraplan:new-project first to initialize project planning." Stop. |
 | PROJECT.md missing | `test -f .ultraplan/PROJECT.md` fails | Display error: "Run /ultraplan:new-project first to initialize project planning." Stop. |
-| Invalid phase number | `grep -q "Phase ${phase_number}:" .ultraplan/ROADMAP.md` fails | Display error: "Phase {N} not found in ROADMAP.md. Available phases: {list}". Stop. |
-| Phase already planned | `ls .ultraplan/plans/${phase_number}-*.md` returns files | **Auto-proceed:** Backup existing plans to `.ultraplan/plans/backup/` and overwrite. No user confirmation needed. |
+| Invalid phase number | `grep -q "Phase ${phase_number}:" .planning/ROADMAP.md` fails | Display error: "Phase {N} not found in ROADMAP.md. Available phases: {list}". Stop. |
+| Phase already planned | `ls ${PHASE_DIR}/${phase_number}-*.md` returns files | **Auto-proceed:** Backup existing plans to `${PHASE_DIR}/backup/` and overwrite. No user confirmation needed. |
 | Planner spawn failure | Task tool returns error | Display error message with details. Suggest checking agent definition exists at `.claude/agents/ultraplan-planner.md`. |
 | Planner generates zero plans | No files written to `.ultraplan/plans/` | Display error: "Planner failed to generate plans. Check phase definition in ROADMAP.md is complete." Stop. |
 | Permission denied writing files | Write operation fails | Display error: "No write permission in .ultraplan/plans/ directory. Check file permissions." Stop. |
@@ -238,8 +251,8 @@ ESTIMATE=$((TASK_COUNT * 30))
 
 ```bash
 # Test write permission
-touch .ultraplan/plans/.test-write && rm .ultraplan/plans/.test-write || {
-  echo "ERROR: No write permission in .ultraplan/plans/"
+touch ${PHASE_DIR}/.test-write && rm ${PHASE_DIR}/.test-write || {
+  echo "ERROR: No write permission in ${PHASE_DIR}/"
   exit 1
 }
 ```
@@ -269,34 +282,39 @@ After successful plan generation:
 
 ## Examples
 
-**Plan Phase 1 (Foundation):**
+**Plan Phase 7 (CLI Commands):**
 ```
-/ultraplan:plan-phase 1
+/ultraplan:plan-phase 7
 ```
 
 Output:
 ```
-Planning complete for Phase 1: foundation
+Planning complete for Phase 7: CLI/슬래시 커맨드
 
 Generated PLAN.md files:
-- .ultraplan/plans/01-01-directory-structure.md (3 tasks, 2 waves)
-- .ultraplan/plans/01-02-document-templates.md (4 tasks, 3 waves)
-- .ultraplan/plans/01-03-agent-definition.md (2 tasks, 1 wave)
+- .planning/phases/07-cli-commands/07-01-PLAN.md (3 tasks, 2 waves)
+- .planning/phases/07-cli-commands/07-02-PLAN.md (2 tasks, 1 wave)
+- .planning/phases/07-cli-commands/07-03-PLAN.md (4 tasks, 3 waves)
 
 Total tasks: 9
 Estimated time: 4.5 hours (based on 30 min average per task)
 
+## After Plan Generation
+
+Tasks from generated PLAN.md files are registered in Claude Tasks API
+for execution tracking. Use `/ultraplan:execute {plan}` to begin execution.
+
 Next: Execute plans sequentially or use /ultraplan:status to see progress.
 ```
 
-**Plan Phase 2 with Prior Phase Check:**
+**Plan Phase 8 with Prior Phase Check:**
 ```
-/ultraplan:plan-phase 2
+/ultraplan:plan-phase 8
 ```
 
-Note (if Phase 1 not complete):
+Note (if Phase 7 not complete):
 ```
-NOTE: Phase 1 (foundation) is not marked complete in ROADMAP.md.
-Planning Phase 2 anyway. Assuming dependencies are handled.
+NOTE: Phase 7 (CLI/슬래시 커맨드) is not marked complete in ROADMAP.md.
+Planning Phase 8 anyway. Assuming dependencies are handled.
 (Auto-proceeding without confirmation)
 ```
