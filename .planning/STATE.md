@@ -9,17 +9,17 @@ See: .planning/PROJECT.md (updated 2026-01-26)
 
 ## Current Position
 
-Phase: 6 of 8 (Claude Tasks Sync)
-Plan: 2 of 3
+Phase: 7 of 8 (CLI Commands)
+Plan: 1 of 3
 Status: In progress
-Last activity: 2026-01-27 - Completed 06-02-PLAN.md
+Last activity: 2026-01-27 - Completed 07-01-PLAN.md
 
-Progress: [██████▓░░░] 79% (22/28 plans complete)
+Progress: [███████░░░] 82% (23/28 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 22
+- Total plans completed: 23
 - Average duration: ~3-5m per plan
 - Total execution time: -
 
@@ -33,10 +33,11 @@ Progress: [██████▓░░░] 79% (22/28 plans complete)
 | 4. OMC 통합 | 5/5 | Complete |
 | 5. OpenCode 재구현 | 4/4 | Complete |
 | 6. Claude Tasks Sync | 2/3 | In progress |
+| 7. CLI Commands | 1/3 | In progress |
 
 **Recent Trend:**
-- Last 3 plans: 05-04, 06-01, 06-02
-- Trend: Phase 6 progressing
+- Last 3 plans: 06-01, 06-02, 07-01
+- Trend: Phase 7 started
 
 *Updated after each plan completion*
 
@@ -55,6 +56,7 @@ Progress: [██████▓░░░] 79% (22/28 plans complete)
 - [05-04]: Default cooldown 5s, max retries 3, state-only rollback
 - [06-01]: Task ID format {phase}-{plan:02d}-{task:02d}, deterministic and sortable
 - [06-02]: Wave dependency model - tasks in wave N blocked by ALL tasks in waves 1..N-1
+- [07-01]: Use .planning/ not .ultraplan/ for directory structure consistency
 
 ### Key References
 
@@ -69,15 +71,15 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 6]: Claude Tasks API 제한 사항 파악 필요
+None
 
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 06-02-PLAN.md
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None
 
 ---
 *State initialized: 2026-01-26*
 *Roadmap version: v2*
-*Next action: Continue Phase 6 with 06-03-PLAN.md (Orchestrator)*
+*Next action: Continue Phase 7 with 07-02-PLAN.md (plan-phase command)*
