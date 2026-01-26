@@ -126,14 +126,38 @@ Suggestion: Create required agent files before execution
 
 ### 2. Load Plan and Build Queue
 
-1. Parse PLAN.md frontmatter and task XML
-2. Build task queue ordered by wave
-3. Check for completed tasks (skip if already done)
-4. Register pending tasks in Claude Tasks API
+**Building Task Queue:**
 
-Display queue preview:
+1. **Parse PLAN.md frontmatter and task XML:**
+   ```bash
+   # Extract frontmatter
+   phase=$(grep "^phase:" $PLAN_PATH | cut -d: -f2 | tr -d ' ')
+   plan=$(grep "^plan:" $PLAN_PATH | cut -d: -f2 | tr -d ' ')
+
+   # Extract task XML blocks
+   # Parse <task> elements with wave assignments
+   ```
+
+2. **Extract tasks with wave assignments:**
+   - Parse task XML blocks sequentially
+   - Derive wave from section headers (### Wave N)
+   - If no wave header, assign wave = 0
+
+3. **Build dependency map from waves:**
+   - Wave 0 tasks: No dependencies (blockedBy = [])
+   - Wave N tasks: Blocked by ALL tasks in waves 0..N-1
+   - Sort by wave, then by task index
+
+4. **Check for completed tasks:**
+   - Read task_states from PLAN.md frontmatter (if exists)
+   - Skip tasks already marked 'done'
+   - Resume from last incomplete task
+
+**Queue Preview:**
+
+Display queue before execution:
 ```
-Plan: 03-01-PLAN.md
+Plan: 07-01-PLAN.md
 Tasks: 5 (0 complete, 5 pending)
 
 Queue:
@@ -146,8 +170,116 @@ Queue:
   Wave 2:
     [ ] Task 5: Add Example Walkthrough
 
+Dependencies:
+  - Task 3 blocked by: Task 1, Task 2
+  - Task 4 blocked by: Task 1, Task 2
+  - Task 5 blocked by: Task 3, Task 4
+
 Proceed with execution? (yes/no)
 ```
+
+### 2a. Claude Tasks Registration
+
+Before execution, register tasks in Claude Tasks API for visual tracking:
+
+**Registration Process:**
+
+For each task in queue:
+
+```javascript
+// Create task in Claude Tasks
+TaskCreate({
+  subject: task.name,  // "Task 1: Create Executor Agent"
+  description: `${task.action}\n\n**Acceptance:** ${task.done}`,
+  activeForm: `Executing ${task.name}`,
+  metadata: {
+    planFile: "07-01-PLAN.md",
+    taskIndex: 0,
+    wave: 0,
+    files: task.files.join(", "),
+    verify: task.verify,
+    taskId: task.id  // "07-01-01"
+  },
+  blockedBy: wave_dependency_task_ids  // Claude Task IDs from previous waves
+})
+
+// Store mapping
+task_mappings[task.id] = claude_task_id
+```
+
+**Dependency Mapping:**
+
+Wave-based dependencies map to Claude Tasks `blockedBy`:
+
+```javascript
+// Wave 1 tasks blocked by all Wave 0 tasks
+const wave0TaskIds = tasks
+  .filter(t => t.wave === 0)
+  .map(t => task_mappings[t.id]);
+
+// When creating Wave 1 tasks
+TaskCreate({
+  subject: wave1Task.name,
+  blockedBy: wave0TaskIds,  // ["1", "2"]
+  metadata: { wave: 1, ... }
+})
+```
+
+**Benefits:**
+- Visual task tracking during execution
+- Dependency visualization in Claude UI
+- Session-level progress persistence
+- Real-time status updates
+
+**Result in TaskList:**
+
+```
+#1 [pending] Task 1: Create Executor Agent
+#2 [pending] Task 2: Add Execution Protocol
+#3 [pending] Task 3: Add Result Reporting [blocked by #1, #2]
+#4 [pending] Task 4: Add Constraints [blocked by #1, #2]
+#5 [pending] Task 5: Add Example [blocked by #3, #4]
+```
+
+### 2b. State Synchronization
+
+After each task completion, synchronize multiple state layers:
+
+**Update Sequence:**
+
+1. **Update PLAN.md frontmatter** (task_states field):
+   ```yaml
+   task_states:
+     "07-01-01": done
+     "07-01-02": done
+     "07-01-03": executing
+   ```
+
+2. **Update STATE.md** (progress section):
+   ```markdown
+   Progress: [██████▓░░░] 79% (22/28 plans complete)
+   Last activity: 2026-01-27 - Completed 07-01 Task 1
+   ```
+
+3. **Sync Claude Tasks status**:
+   ```javascript
+   TaskUpdate({
+     taskId: claude_task_id,
+     status: "completed",
+     metadata: {
+       ...task.metadata,
+       completedAt: new Date().toISOString(),
+       evidence: executorResult.evidence
+     }
+   })
+   ```
+
+**On Resume (if execution interrupted):**
+
+1. Read task_states from PLAN.md frontmatter
+2. Skip tasks already marked 'done'
+3. Re-register only pending tasks in Claude Tasks
+4. Continue from last incomplete task
 
 ### 3. Execute Router Protocol
 
@@ -263,13 +395,44 @@ Next Steps:
 
 ## Error Handling
 
-| Error | Response |
-|-------|----------|
-| Plan file not found | "Plan not found: {path}. Check path and try again." |
-| No tasks in plan | "No executable tasks found in {plan}." |
-| Executor agent missing | "Missing .claude/agents/ultraplan-executor.md. Run /ultraplan:init." |
-| Task permanently failed | "Task failed after 3 retries. Options: /retry, /skip, /abort" |
-| All tasks blocked | "All remaining tasks are blocked. Check dependencies." |
+Comprehensive error handling for all failure modes:
+
+| Error | Response | Recovery |
+|-------|----------|----------|
+| **Plan file not found** | "Plan not found: {path}. Check path." | Fix path and retry |
+| **No tasks in plan** | "No executable tasks found in {plan}." | Add tasks to PLAN.md |
+| **Invalid task XML** | "Parse error at line {N}: {error}" | Fix XML syntax |
+| **Agent spawn failure** | "Failed to spawn {agent}. Retrying..." | Retry spawn 3 times, then abort |
+| **Executor failed 3x** | "Task failed after 3 retries. Options: /retry, /skip, /abort" | Prompt user for action |
+| **Architect rejected 3x** | "Verification failed 3 times. Options: /retry, /skip, /abort" | Prompt user for action |
+| **All tasks blocked** | "All remaining tasks blocked. Check dependencies." | Review dependency graph |
+| **Commit failed** | "Git commit failed: {error}. Work is saved, commit manually." | Continue execution, warn user |
+| **STATE.md write failed** | "Cannot update STATE.md: {error}" | Abort execution |
+| **Claude Tasks API error** | "Task sync failed: {error}. Continuing without sync." | Continue execution, warn user |
+
+**Error Recovery Strategies:**
+
+**Executor/Architect Failures:**
+```
+Retry 1: Add failure feedback, retry immediately
+Retry 2: Add detailed feedback, retry immediately
+Retry 3 (max): Prompt user:
+  - [r] Retry one more time
+  - [s] Skip task and continue
+  - [a] Abort execution
+```
+
+**Agent Spawn Failures:**
+```
+Attempt 1-3: Retry spawn with backoff (0s, 5s, 10s)
+After 3 failures: Abort with error message
+```
+
+**Permanent Failures:**
+When task exceeds max retries, mark as failed_permanent:
+- Task remains in 'failed' state
+- Dependent tasks remain blocked
+- User must manually resolve or skip
 
 ## Options
 
