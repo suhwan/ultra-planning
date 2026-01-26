@@ -139,9 +139,17 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md - PLAN.md 파서 구현 (태스크 추출)
-- [ ] 06-02-PLAN.md - PLAN.md → TaskCreate 동기화
-- [ ] 06-03-PLAN.md - TaskUpdate → PLAN.md 상태 반영
+- [ ] 06-01-PLAN.md — Sync module types and enhanced PLAN.md parser (TaskMapping, plan-parser.ts)
+- [ ] 06-02-PLAN.md — Task tool invocation mapper (task-mapper.ts, dependency-map.ts)
+- [ ] 06-03-PLAN.md — Task status to PLAN.md sync (status-sync.ts, frontmatter tracking)
+
+**Wave Structure:**
+- Wave 1: 06-01 (foundation - types and parser)
+- Wave 2: 06-02, 06-03 (parallel - different file sets, both depend on 06-01)
+
+**참조:**
+- `references/oh-my-claudecode/commands/` - Task tool invocation patterns
+- Phase 3 infrastructure: `src/documents/xml/task-parser.ts`, `src/documents/templates/plan.ts`
 
 ### Phase 7: CLI/슬래시 커맨드
 **Goal**: 사용자 인터페이스 구현
