@@ -181,8 +181,15 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md - "Todo API 만들어줘" 시나리오 테스트
-- [ ] 08-02-PLAN.md - 에러 복구 시나리오 테스트
+- [ ] 08-01-PLAN.md — E2E workflow integration tests (state, documents, task sync)
+- [ ] 08-02-PLAN.md — Error recovery scenario tests (checkpoints, rollback, retry)
+
+**Wave Structure:**
+- Wave 1: 08-01, 08-02 (parallel - different test suites, no file overlap)
+
+**참조:**
+- Research: `.planning/phases/08-integration-testing/08-RESEARCH.md`
+- Test patterns: Vitest with temp directories, test.extend() fixtures
 
 ## Progress
 
