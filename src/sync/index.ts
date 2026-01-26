@@ -9,11 +9,16 @@
  * - Generate deterministic task IDs for state tracking
  * - Create Task tool invocation parameters
  * - Track task execution state
+ * - Convert task mappings to Task tool invocations
+ * - Build wave-based dependency maps for parallel execution
  *
  * @module sync
  */
 
-// Re-export all types
+// ============================================================================
+// Types
+// ============================================================================
+
 export type {
   TaskMapping,
   TaskState,
@@ -24,10 +29,12 @@ export type {
   PlanSyncData,
 } from './types.js';
 
-// Re-export default config
 export { DEFAULT_SYNC_CONFIG } from './types.js';
 
-// Re-export parser functions
+// ============================================================================
+// Plan Parser
+// ============================================================================
+
 export {
   parsePlanForSync,
   extractTaskMappings,
@@ -37,3 +44,47 @@ export {
   findTaskById,
   filterTasksByStatus,
 } from './plan-parser.js';
+
+// ============================================================================
+// Task Mapper
+// ============================================================================
+
+export type { TaskInvocation } from './task-mapper.js';
+
+export {
+  createTaskInvocation,
+  createTaskInvocations,
+  determineSubagentType,
+  getTaskIds,
+  filterByWave,
+  getReadyTasks as getReadyTaskInvocations,
+} from './task-mapper.js';
+
+// ============================================================================
+// Dependency Mapping
+// ============================================================================
+
+export type { DependencyMap } from './dependency-map.js';
+
+export {
+  buildDependencyMap,
+  mapWaveToBlockedBy,
+  getExecutionOrder,
+  getWaves,
+  getTasksInWave,
+  hasDependencies,
+  getReadyTasks as getReadyTaskMappings,
+} from './dependency-map.js';
+
+// ============================================================================
+// Status Sync
+// ============================================================================
+
+export {
+  getTaskStates,
+  updateTaskStatus,
+  markTaskComplete,
+  markTaskFailed,
+  markTaskInProgress,
+  updateContentCheckbox,
+} from './status-sync.js';
