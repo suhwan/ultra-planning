@@ -91,11 +91,15 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 04-01-PLAN.md - ralplan 스킬 통합 (Planner+Architect+Critic 루프)
-- [ ] 04-02-PLAN.md - Ultrapilot 5워커 패턴 통합
-- [ ] 04-03-PLAN.md - 파일 소유권 추적 구현
-- [ ] 04-04-PLAN.md - 키워드 감지 통합 (magic-keywords)
-- [ ] 04-05-PLAN.md - Architect/Critic 에이전트 프롬프트 복사
+- [ ] 04-01-PLAN.md — Architect/Critic agent prompts (READ-ONLY advisor + plan reviewer)
+- [ ] 04-02-PLAN.md — Magic keyword detection (autopilot, plan, ultrawork triggers)
+- [ ] 04-03-PLAN.md — File ownership tracking (exclusive worker file sets)
+- [ ] 04-04-PLAN.md — Ralplan orchestration loop (Planner+Architect+Critic iteration)
+- [ ] 04-05-PLAN.md — Ultrapilot worker coordination (spawn, track, complete/fail)
+
+**Wave Structure:**
+- Wave 1: 04-01, 04-02, 04-03 (parallel - no file overlap)
+- Wave 2: 04-04, 04-05 (04-04 depends on 04-01, 04-05 depends on 04-03)
 
 **참조:**
 - `references/oh-my-claudecode/src/features/magic-keywords.ts`
