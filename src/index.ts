@@ -29,5 +29,8 @@ export * from './hooks/index.js';
 // Loops module (persistent execution patterns)
 export * from './loops/index.js';
 
+// Recovery module (error handling with rollback)
+export * from './recovery/index.js';
+
 // Placeholder export to make the module valid
 export const VERSION = '0.1.0';
