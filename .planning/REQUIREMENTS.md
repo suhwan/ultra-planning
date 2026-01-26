@@ -26,6 +26,7 @@ v1 출시를 위한 필수 요구사항. 각 요구사항은 로드맵 페이즈
 - [ ] **EXEC-02**: 의존성 분석 후 병렬 태스크 분리
 - [ ] **EXEC-03**: 최대 5 워커 병렬 실행
 - [ ] **EXEC-04**: 파일 소유권 추적 (충돌 방지)
+- [ ] **EXEC-05**: Atomic commit (각 태스크 완료 시 즉시 커밋)
 
 ### 자연어 (Natural Language Interface)
 
@@ -57,7 +58,6 @@ v2로 연기된 기능. 현재 로드맵에 포함되지 않음.
 
 | Feature | Reason |
 |---------|--------|
-| Atomic commit | 사용자 선택에서 제외 |
 | GUI/웹 인터페이스 | CLI 전용 도구 |
 | 클라우드 동기화 | 로컬 파일 시스템 기반 |
 | IDE 플러그인 | Claude Code CLI 전용 |
@@ -80,14 +80,15 @@ v2로 연기된 기능. 현재 로드맵에 포함되지 않음.
 | EXEC-02 | Phase 4: Document-Task Sync | Pending |
 | EXEC-03 | Phase 7: Parallelism | Pending |
 | EXEC-04 | Phase 7: Parallelism | Pending |
+| EXEC-05 | Phase 3: Sequential Execution | Pending |
 | NL-01 | Phase 6: Natural Language | Pending |
 | NL-02 | Phase 6: Natural Language | Pending |
 | NL-03 | Phase 6: Natural Language | Pending |
 | NL-04 | Phase 6: Natural Language | Pending |
 
 **Coverage:**
-- v1 requirements: 15 total
-- Mapped to phases: 15
+- v1 requirements: 16 total
+- Mapped to phases: 16
 - Unmapped: 0
 
 ---

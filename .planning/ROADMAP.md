@@ -12,8 +12,23 @@ Ultra Planner delivers a document-driven workflow orchestration system for Claud
 
 Decimal phases appear between their surrounding integers in numeric order.
 
+**Dependency Graph:**
+```
+Phase 1 ──> Phase 2 ──> Phase 2.5 ──> Phase 3 ──┬──> Phase 4 ──┬──> Phase 7
+            (Foundation) (PoC Spike)  (Execution) │   (Tasks Sync)│
+                                                  │               │
+                                                  └──> Phase 5 ───┤
+                                                       (Quality)  │
+                                                                  v
+                                                              Phase 6
+                                                           (Natural Lang)
+```
+
+**Critical Path:** Phase 1 → 2 → 2.5 → 3 → 4 → 6 (Tasks API 검증이 핵심 리스크)
+
 - [ ] **Phase 1: Foundation** - Document templates, CLI structure, and state management infrastructure
 - [ ] **Phase 2: Core Planning** - Planner agent generating PROJECT, ROADMAP, and PLAN documents
+- [ ] **Phase 2.5: Tasks API Spike** - INSERTED: Claude Tasks API 검증 PoC (핵심 리스크 완화)
 - [ ] **Phase 3: Sequential Execution** - Executor and Architect agents with verification gates
 - [ ] **Phase 4: Document-Task Sync** - PLAN to Claude Tasks bidirectional synchronization (core differentiator)
 - [ ] **Phase 5: Quality Layer** - Critic agent and ralplan iterative verification loop
@@ -58,16 +73,34 @@ Plans:
 - [ ] 02-04: PLAN.md task breakdown with dependencies
 - [ ] 02-05: Review and approval workflow
 
-### Phase 3: Sequential Execution
-**Goal**: Execute tasks one at a time with verification gates before claiming completion
+### Phase 2.5: Tasks API Spike (INSERTED)
+**Goal**: Validate Claude Tasks API feasibility before committing to Phase 4 architecture
 **Depends on**: Phase 2
-**Requirements**: AGENT-01, AGENT-02 (executor and architect portions)
+**Requirements**: None (risk mitigation spike)
+**Success Criteria** (what must be TRUE):
+  1. Claude Tasks API capabilities and limitations documented
+  2. PoC demonstrates PLAN.md → Claude Tasks conversion
+  3. PoC demonstrates Claude Tasks → PLAN.md status sync
+  4. API rate limits and constraints identified
+  5. Go/No-Go decision for Phase 4 approach
+**Plans**: TBD (estimated 2-3 plans)
+
+Plans:
+- [ ] 02.5-01: Claude Tasks API research and documentation
+- [ ] 02.5-02: Bidirectional sync PoC implementation
+- [ ] 02.5-03: Feasibility report and architecture recommendation
+
+### Phase 3: Sequential Execution
+**Goal**: Execute tasks one at a time with verification gates and atomic commits
+**Depends on**: Phase 2
+**Requirements**: AGENT-01, AGENT-02 (executor and architect portions), EXEC-05
 **Success Criteria** (what must be TRUE):
   1. Executor agent (Sonnet) runs individual tasks from PLAN.md with fresh 200k context
   2. Architect agent (Opus) verifies task completion before marking done
   3. Task results are captured and state is updated after each task
   4. Failed verifications trigger retry with feedback
-**Plans**: TBD (estimated 6-8 plans)
+  5. Each completed task triggers atomic git commit with descriptive message
+**Plans**: TBD (estimated 7-9 plans)
 
 Plans:
 - [ ] 03-01: Executor agent definition (.claude/agents/executor.md)
@@ -77,6 +110,7 @@ Plans:
 - [ ] 03-05: Result capture and state updates
 - [ ] 03-06: Retry loop with failure feedback
 - [ ] 03-07: Router for agent coordination
+- [ ] 03-08: Atomic commit protocol per task
 
 ### Phase 4: Document-Task Sync
 **Goal**: Bidirectional synchronization between PLAN.md and Claude Tasks (core differentiator)
@@ -101,7 +135,7 @@ Plans:
 
 ### Phase 5: Quality Layer
 **Goal**: Iterative verification loop ensuring plans meet quality standards before execution
-**Depends on**: Phase 3
+**Depends on**: Phase 2 (Planner for ralplan), Phase 3 (Executor/Architect)
 **Requirements**: AGENT-02 (critic portion), AGENT-03, AGENT-04
 **Success Criteria** (what must be TRUE):
   1. Critic agent (Opus) reviews plans and identifies gaps
@@ -141,7 +175,7 @@ Plans:
 
 ### Phase 7: Parallelism
 **Goal**: Execute up to 5 tasks in parallel with file ownership tracking
-**Depends on**: Phase 4
+**Depends on**: Phase 3 (Executor), Phase 4 (Tasks Sync for dependency waves)
 **Requirements**: EXEC-03, EXEC-04
 **Success Criteria** (what must be TRUE):
   1. Up to 5 executor workers run concurrently on independent tasks
@@ -164,13 +198,14 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
+Phases execute in numeric order: 1 → 2 → 2.5 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/5 | Not started | - |
 | 2. Core Planning | 0/5 | Not started | - |
-| 3. Sequential Execution | 0/7 | Not started | - |
+| 2.5. Tasks API Spike | 0/3 | Not started | - |
+| 3. Sequential Execution | 0/8 | Not started | - |
 | 4. Document-Task Sync | 0/7 | Not started | - |
 | 5. Quality Layer | 0/6 | Not started | - |
 | 6. Natural Language | 0/7 | Not started | - |
@@ -178,5 +213,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 ---
 *Roadmap created: 2026-01-26*
-*Depth: comprehensive (7 phases, 45 estimated plans)*
-*Coverage: 15/15 v1 requirements mapped*
+*Roadmap revised: 2026-01-26 (Architect review)*
+*Depth: comprehensive (8 phases, 49 estimated plans)*
+*Coverage: 16/16 v1 requirements mapped*
