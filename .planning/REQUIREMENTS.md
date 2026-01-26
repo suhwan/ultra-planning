@@ -69,27 +69,27 @@ v2로 연기된 기능. 현재 로드맵에 포함되지 않음.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DOCS-01 | TBD | Pending |
-| DOCS-02 | TBD | Pending |
-| DOCS-03 | TBD | Pending |
-| AGENT-01 | TBD | Pending |
-| AGENT-02 | TBD | Pending |
-| AGENT-03 | TBD | Pending |
-| AGENT-04 | TBD | Pending |
-| EXEC-01 | TBD | Pending |
-| EXEC-02 | TBD | Pending |
-| EXEC-03 | TBD | Pending |
-| EXEC-04 | TBD | Pending |
-| NL-01 | TBD | Pending |
-| NL-02 | TBD | Pending |
-| NL-03 | TBD | Pending |
-| NL-04 | TBD | Pending |
+| DOCS-01 | Phase 1: Foundation | Pending |
+| DOCS-02 | Phase 1: Foundation | Pending |
+| DOCS-03 | Phase 1: Foundation | Pending |
+| AGENT-01 | Phase 3: Sequential Execution | Pending |
+| AGENT-02 | Phase 2, 3, 5: Planning, Execution, Quality | Pending |
+| AGENT-03 | Phase 5: Quality Layer | Pending |
+| AGENT-04 | Phase 5: Quality Layer | Pending |
+| EXEC-01 | Phase 4: Document-Task Sync | Pending |
+| EXEC-02 | Phase 4: Document-Task Sync | Pending |
+| EXEC-03 | Phase 7: Parallelism | Pending |
+| EXEC-04 | Phase 7: Parallelism | Pending |
+| NL-01 | Phase 6: Natural Language | Pending |
+| NL-02 | Phase 6: Natural Language | Pending |
+| NL-03 | Phase 6: Natural Language | Pending |
+| NL-04 | Phase 6: Natural Language | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-26*
-*Last updated: 2026-01-26 after initial definition*
+*Last updated: 2026-01-26 after roadmap creation*
