@@ -6,7 +6,7 @@
  */
 
 import { readFile, writeFile } from 'fs/promises';
-import * as matter from 'gray-matter';
+import matter from 'gray-matter';
 import type { TaskState } from './types.js';
 import type { PlanFrontmatter } from '../types.js';
 
