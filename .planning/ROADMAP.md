@@ -17,7 +17,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 1: 프로젝트 구조** - TypeScript 기반, 디렉토리 구조
 - [x] **Phase 2: 상태 관리** - 파일 기반 상태, 이벤트 시스템
 - [x] **Phase 3: GSD 통합** - 문서 템플릿, Planner 에이전트
-- [ ] **Phase 4: OMC 통합** - ralplan, Ultrapilot, 키워드 감지
+- [x] **Phase 4: OMC 통합** - ralplan, Ultrapilot, 키워드 감지
 - [ ] **Phase 5: OpenCode 재구현** - Ralph Loop 개선, Atlas 강제
 - [ ] **Phase 6: Claude Tasks 동기화** - PLAN.md ↔ Tasks API
 - [ ] **Phase 7: CLI/슬래시 커맨드** - /ultraplan:* 명령어
@@ -91,11 +91,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Architect/Critic agent prompts (READ-ONLY advisor + plan reviewer)
-- [ ] 04-02-PLAN.md — Magic keyword detection (autopilot, plan, ultrawork triggers)
-- [ ] 04-03-PLAN.md — File ownership tracking (exclusive worker file sets)
-- [ ] 04-04-PLAN.md — Ralplan orchestration loop (Planner+Architect+Critic iteration)
-- [ ] 04-05-PLAN.md — Ultrapilot worker coordination (spawn, track, complete/fail)
+- [x] 04-01-PLAN.md — Architect/Critic agent prompts (READ-ONLY advisor + plan reviewer)
+- [x] 04-02-PLAN.md — Magic keyword detection (autopilot, plan, ultrawork triggers)
+- [x] 04-03-PLAN.md — File ownership tracking (exclusive worker file sets)
+- [x] 04-04-PLAN.md — Ralplan orchestration loop (Planner+Architect+Critic iteration)
+- [x] 04-05-PLAN.md — Ultrapilot worker coordination (spawn, track, complete/fail)
 
 **Wave Structure:**
 - Wave 1: 04-01, 04-02, 04-03 (parallel - no file overlap)
@@ -174,7 +174,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. 프로젝트 구조 | 3/3 | Complete | 2026-01-26 |
 | 2. 상태 관리 | 4/4 | Complete | 2026-01-26 |
 | 3. GSD 통합 | 4/4 | Complete | 2026-01-26 |
-| 4. OMC 통합 | 0/5 | Not started | - |
+| 4. OMC 통합 | 5/5 | Complete | 2026-01-26 |
 | 5. OpenCode 재구현 | 0/4 | Not started | - |
 | 6. Claude Tasks 동기화 | 0/3 | Not started | - |
 | 7. CLI/슬래시 커맨드 | 0/3 | Not started | - |
