@@ -24,11 +24,45 @@ Execute a plan file using the Router protocol.
 
 ## Shorthand Resolution
 
+The command accepts multiple input formats and resolves them to full paths:
+
 | Input | Resolved Path |
 |-------|---------------|
-| `03-01` | `.planning/phases/03-sequential-execution/03-01-PLAN.md` |
-| `02-03-PLAN.md` | `.planning/phases/02-core-planning/02-03-PLAN.md` |
-| `03-07` | `.planning/phases/03-sequential-execution/03-07-PLAN.md` |
+| `07-01` | `.planning/phases/07-cli-commands/07-01-PLAN.md` |
+| `07-01-PLAN.md` | `.planning/phases/07-cli-commands/07-01-PLAN.md` |
+| Full path | Used as-is if exists |
+
+**Resolution Algorithm:**
+
+```bash
+parse_plan_path() {
+  local input="$1"
+
+  # If full path exists, use it
+  if [[ -f "$input" ]]; then
+    echo "$input"
+    return
+  fi
+
+  # Extract phase and plan from shorthand (e.g., "07-01")
+  local phase=$(echo "$input" | cut -d'-' -f1)
+  local plan_num=$(echo "$input" | cut -d'-' -f2 | sed 's/-PLAN.md//')
+
+  # Pad phase number
+  local padded=$(printf "%02d" "$phase")
+
+  # Find phase directory
+  local phase_dir=$(ls -d .planning/phases/${padded}-* 2>/dev/null | head -1)
+
+  if [[ -z "$phase_dir" ]]; then
+    echo "ERROR: Phase directory not found for phase $phase"
+    return 1
+  fi
+
+  # Construct full path
+  echo "${phase_dir}/${padded}-${plan_num}-PLAN.md"
+}
+```
 
 ## Behavior
 
@@ -36,23 +70,58 @@ When user runs `/ultraplan:execute {plan}`:
 
 ### 1. Validate Prerequisites
 
-```
-Check:
-- [ ] PLAN.md file exists
-- [ ] PLAN.md has valid frontmatter
-- [ ] PLAN.md has <task> elements
-- [ ] STATE.md exists and is readable
-- [ ] Required agents exist:
-      - .claude/agents/ultraplan-executor.md
-      - .claude/agents/ultraplan-architect.md
+Before execution, verify all required components:
+
+**Required Files:**
+- [ ] PLAN.md file exists at resolved path
+- [ ] PLAN.md has valid YAML frontmatter
+- [ ] PLAN.md contains at least one `<task>` element
+- [ ] STATE.md exists at `.planning/STATE.md`
+- [ ] STATE.md is readable and has current position
+
+**Required Agents:**
+- [ ] `.claude/agents/ultraplan-executor.md` exists
+- [ ] `.claude/agents/ultraplan-architect.md` exists
+
+**Validation Commands:**
+
+```bash
+# Check plan file
+if [[ ! -f "$PLAN_PATH" ]]; then
+  echo "ERROR: Plan not found: $PLAN_PATH"
+  exit 1
+fi
+
+# Check for tasks
+if ! grep -q "<task" "$PLAN_PATH"; then
+  echo "ERROR: No tasks found in $PLAN_PATH"
+  exit 1
+fi
+
+# Check STATE.md
+if [[ ! -f ".planning/STATE.md" ]]; then
+  echo "ERROR: STATE.md not found at .planning/STATE.md"
+  exit 1
+fi
+
+# Check agents
+for agent in ultraplan-executor ultraplan-architect; do
+  if [[ ! -f ".claude/agents/${agent}.md" ]]; then
+    echo "ERROR: Missing agent: .claude/agents/${agent}.md"
+    echo "Suggestion: Create agent files before execution"
+    exit 1
+  fi
+done
 ```
 
-If validation fails:
+**Error Messages:**
+
+If validation fails, show specific error:
 ```
 ERROR: Cannot execute plan
 
 Missing: .claude/agents/ultraplan-architect.md
-Suggestion: Run /ultraplan:init-agents first
+Suggestion: Create required agent files before execution
 ```
 
 ### 2. Load Plan and Build Queue
@@ -82,28 +151,53 @@ Proceed with execution? (yes/no)
 
 ### 3. Execute Router Protocol
 
-Follow Router Protocol from `.claude/skills/ultraplan/references/router.md`:
+Follow the execution loop from Router Protocol (`.claude/skills/ultraplan/references/router.md`):
 
-1. **For each task in queue:**
-   a. Transition to `executing`
-   b. Spawn Executor agent (Sonnet)
-   c. Capture result
+**Main Execution Loop:**
 
-2. **On Executor success:**
-   a. Transition to `verifying`
-   b. Spawn Architect agent (Opus)
-   c. Capture verdict
+```
+FOR each task in queue (ordered by wave):
 
-3. **On Architect APPROVED:**
-   a. Transition to `done`
-   b. Update STATE.md
-   c. Commit changes
-   d. Unblock dependent tasks
+  1. Check dependencies: Skip if blockedBy tasks incomplete
 
-4. **On failure (Executor or Architect):**
-   a. Add feedback to task
-   b. Retry (up to 3 times)
-   c. If max retries: prompt user
+  2. Spawn Executor:
+     Task(
+       subagent_type="ultraplan-executor",
+       model="sonnet",
+       prompt="Execute task: {task_xml}"
+     )
+
+  3. On Executor success -> Spawn Architect:
+     Task(
+       subagent_type="ultraplan-architect",
+       model="opus",
+       prompt="Verify task completion: {task_xml}\n\nExecutor result: {result}"
+     )
+
+  4. On Architect APPROVED:
+     - Mark task complete in STATE.md
+     - Sync Claude Tasks to 'completed'
+     - Commit changes (atomic per-task commit)
+     - Unblock dependent tasks
+
+  5. On failure (Executor or Architect):
+     - Retry up to 3 times with feedback
+     - If max retries exceeded: prompt user for action
+```
+
+**Retry Logic:**
+
+| Retry Count | Action |
+|-------------|--------|
+| 1-2 | Auto-retry with previous failure feedback |
+| 3 (max) | Prompt user: retry, skip, or abort |
+
+**Unattended Mode:**
+
+When executing in unattended mode (auto-proceed):
+- Skip "Proceed? (y/n)" confirmations
+- Auto-retry on failures (up to max)
+- Only stop for permanent failures after 3 retries
 
 ### 4. Progress Display
 
@@ -130,13 +224,13 @@ Pending:
 
 ### 5. Completion Summary
 
-After all tasks complete:
+After all tasks complete, display comprehensive summary:
 
 ```
 Plan Execution Complete
 =======================================
 
-Plan: 03-01-PLAN.md
+Plan: 07-01-PLAN.md
 Status: SUCCESS
 
 Results:
@@ -158,9 +252,13 @@ must_haves Verified:
   [x] Agent reports structured results
   [x] Agent follows single-task pattern
 
-Next:
-  /ultraplan:execute 03-02  (next plan)
-  /ultraplan:status         (view progress)
+STATE.md Updated:
+  Progress: [██████████] 23/28 plans complete (82%)
+  Last activity: 2026-01-27 - Completed 07-01-PLAN.md
+
+Next Steps:
+  /ultraplan:execute 07-02  (next plan in phase)
+  /ultraplan:status         (view overall progress)
 ```
 
 ## Error Handling
