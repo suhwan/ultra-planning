@@ -20,7 +20,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 4: OMC 통합** - ralplan, Ultrapilot, 키워드 감지
 - [x] **Phase 5: OpenCode 재구현** - Ralph Loop 개선, Atlas 강제
 - [x] **Phase 6: Claude Tasks 동기화** - PLAN.md ↔ Tasks API
-- [ ] **Phase 7: CLI/슬래시 커맨드** - /ultraplan:* 명령어
+- [x] **Phase 7: CLI/슬래시 커맨드** - /ultraplan:* 명령어
 - [ ] **Phase 8: 통합 테스트** - E2E 워크플로우 검증
 
 ## Phase Details
@@ -160,9 +160,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — /ultraplan:new-project + keyword triggers
-- [ ] 07-02-PLAN.md — /ultraplan:plan-phase + context extraction
-- [ ] 07-03-PLAN.md — /ultraplan:execute + Router Protocol integration
+- [x] 07-01-PLAN.md — /ultraplan:new-project + keyword triggers
+- [x] 07-02-PLAN.md — /ultraplan:plan-phase + context extraction
+- [x] 07-03-PLAN.md — /ultraplan:execute + Router Protocol integration
 
 **Wave Structure:**
 - Wave 1: 07-01, 07-02, 07-03 (parallel - no file overlap)
@@ -197,8 +197,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. OMC 통합 | 5/5 | Complete | 2026-01-26 |
 | 5. OpenCode 재구현 | 4/4 | Complete | 2026-01-27 |
 | 6. Claude Tasks 동기화 | 3/3 | Complete | 2026-01-27 |
-| 7. CLI/슬래시 커맨드 | 0/3 | Ready | - |
-| 8. 통합 테스트 | 0/2 | Not started | - |
+| 7. CLI/슬래시 커맨드 | 3/3 | Complete | 2026-01-27 |
+| 8. 통합 테스트 | 0/2 | Ready | - |
 
 ---
 *Roadmap created: 2026-01-26*
