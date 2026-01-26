@@ -152,7 +152,7 @@ Plans:
 - Phase 3 infrastructure: `src/documents/xml/task-parser.ts`, `src/documents/templates/plan.ts`
 
 ### Phase 7: CLI/슬래시 커맨드
-**Goal**: 사용자 인터페이스 구현
+**Goal**: 사용자 인터페이스 구현 - 슬래시 커맨드와 키워드 통합
 **Depends on**: Phase 6
 **Success Criteria** (what must be TRUE):
   1. 슬래시 커맨드로 전체 워크플로우 실행 가능
@@ -160,9 +160,17 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md - /ultraplan:new-project 구현
-- [ ] 07-02-PLAN.md - /ultraplan:plan-phase 구현
-- [ ] 07-03-PLAN.md - /ultraplan:execute 구현
+- [ ] 07-01-PLAN.md — /ultraplan:new-project + keyword triggers
+- [ ] 07-02-PLAN.md — /ultraplan:plan-phase + context extraction
+- [ ] 07-03-PLAN.md — /ultraplan:execute + Router Protocol integration
+
+**Wave Structure:**
+- Wave 1: 07-01, 07-02, 07-03 (parallel - no file overlap)
+
+**참조:**
+- Existing commands: `.claude/commands/ultraplan-*.md`
+- Keyword patterns: `src/orchestration/keywords/patterns.ts`
+- Router protocol: `.claude/skills/ultraplan/references/router.md`
 
 ### Phase 8: 통합 테스트
 **Goal**: E2E 워크플로우 검증
