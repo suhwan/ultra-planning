@@ -116,10 +116,14 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 05-01-PLAN.md - Ralph Loop 개선 버전 구현 (에러 복구, 세션 API, 모델 유지)
-- [ ] 05-02-PLAN.md - 오케스트레이터 강제 훅 구현 (직접 수정 금지, Single Task, 검증 리마인더)
-- [ ] 05-03-PLAN.md - Verification Reminder 구현
-- [ ] 05-04-PLAN.md - 에러 복구 + Git 롤백 통합
+- [ ] 05-01-PLAN.md — Ralph Loop 상태 관리 및 완료 감지 (StateManager 통합, promise 패턴)
+- [ ] 05-02-PLAN.md — 오케스트레이터 강제 훅 (file guard, single task directive)
+- [ ] 05-03-PLAN.md — Verification Reminder 구현 (검증 체크리스트, 이벤트 발행)
+- [ ] 05-04-PLAN.md — 에러 복구 + Git 롤백 통합 (cooldown, checkpoint rollback)
+
+**Wave Structure:**
+- Wave 1: 05-01, 05-02 (parallel - no file overlap)
+- Wave 2: 05-03, 05-04 (05-03 depends on 05-02, 05-04 depends on 05-01)
 
 **참조:**
 - `references/oh-my-opencode/src/hooks/ralph-loop/`
@@ -175,7 +179,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. 상태 관리 | 4/4 | Complete | 2026-01-26 |
 | 3. GSD 통합 | 4/4 | Complete | 2026-01-26 |
 | 4. OMC 통합 | 5/5 | Complete | 2026-01-26 |
-| 5. OpenCode 재구현 | 0/4 | Not started | - |
+| 5. OpenCode 재구현 | 0/4 | Ready | - |
 | 6. Claude Tasks 동기화 | 0/3 | Not started | - |
 | 7. CLI/슬래시 커맨드 | 0/3 | Not started | - |
 | 8. 통합 테스트 | 0/2 | Not started | - |
