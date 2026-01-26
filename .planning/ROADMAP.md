@@ -64,14 +64,15 @@ Plans:
   2. Planner agent decomposes project into phases in ROADMAP.md
   3. Planner agent generates PLAN.md with task breakdowns for each phase
   4. User can review and approve generated documents before proceeding
-**Plans**: TBD (estimated 5-6 plans)
+**Plans**: 6 plans
 
 Plans:
-- [ ] 02-01: Planner agent definition (.claude/agents/planner.md)
-- [ ] 02-02: PROJECT.md generation from user input
-- [ ] 02-03: ROADMAP.md phase decomposition logic
-- [ ] 02-04: PLAN.md task breakdown with dependencies
-- [ ] 02-05: Review and approval workflow
+- [ ] 02-01-PLAN.md — Create Planner agent core with interview protocol
+- [ ] 02-02-PLAN.md — Add PROJECT.md and ROADMAP.md generation logic
+- [ ] 02-03-PLAN.md — Add PLAN.md generation with wave assignment
+- [ ] 02-04-PLAN.md — Create /ultraplan:new-project command
+- [ ] 02-05-PLAN.md — Add review and approval workflow
+- [ ] 02-06-PLAN.md — Integration verification (checkpoint)
 
 ### Phase 2.5: Tasks API Spike (INSERTED)
 **Goal**: Validate Claude Tasks API feasibility before committing to Phase 4 architecture
@@ -203,7 +204,7 @@ Phases execute in numeric order: 1 → 2 → 2.5 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/5 | Planned | - |
-| 2. Core Planning | 0/5 | Not started | - |
+| 2. Core Planning | 0/6 | Planned | - |
 | 2.5. Tasks API Spike | 0/3 | Not started | - |
 | 3. Sequential Execution | 0/8 | Not started | - |
 | 4. Document-Task Sync | 0/7 | Not started | - |
