@@ -55,7 +55,17 @@ export function isGitRepo(): boolean {
  */
 export function execGit(args: string[]): string {
   try {
-    return execSync(`git ${args.join(' ')}`, {
+    // Quote arguments that contain spaces or special characters
+    const quotedArgs = args.map((arg) => {
+      // If arg contains spaces, parentheses, or other shell metacharacters, quote it
+      if (/[ ()\[\]{}$&|;'"]/.test(arg)) {
+        // Escape single quotes and wrap in single quotes
+        return `'${arg.replace(/'/g, "'\\''")}'`;
+      }
+      return arg;
+    });
+
+    return execSync(`git ${quotedArgs.join(' ')}`, {
       cwd: process.cwd(),
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
