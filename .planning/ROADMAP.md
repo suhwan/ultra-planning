@@ -16,7 +16,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 
 - [x] **Phase 1: 프로젝트 구조** - TypeScript 기반, 디렉토리 구조
 - [x] **Phase 2: 상태 관리** - 파일 기반 상태, 이벤트 시스템
-- [ ] **Phase 3: GSD 통합** - 문서 템플릿, Planner 에이전트
+- [x] **Phase 3: GSD 통합** - 문서 템플릿, Planner 에이전트
 - [ ] **Phase 4: OMC 통합** - ralplan, Ultrapilot, 키워드 감지
 - [ ] **Phase 5: OpenCode 재구현** - Ralph Loop 개선, Atlas 강제
 - [ ] **Phase 6: Claude Tasks 동기화** - PLAN.md ↔ Tasks API
@@ -68,10 +68,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 03-01-PLAN.md - Document templates + generators (types, Zod schemas, PROJECT/ROADMAP/PLAN generators)
-- [ ] 03-02-PLAN.md - Planner agent prompt management (TypeScript, getFullPrompt())
-- [ ] 03-03-PLAN.md - XML task format utilities (generate/parse, escaping)
-- [ ] 03-04-PLAN.md - Atomic commit pattern (simple-git, conventional commits)
+- [x] 03-01-PLAN.md - Document templates + generators (types, Zod schemas, PROJECT/ROADMAP/PLAN generators)
+- [x] 03-02-PLAN.md - Planner agent prompt management (TypeScript, getFullPrompt())
+- [x] 03-03-PLAN.md - XML task format utilities (generate/parse, escaping)
+- [x] 03-04-PLAN.md - Atomic commit pattern (simple-git, conventional commits)
 
 **Wave Structure:**
 - Wave 1: 03-01, 03-02, 03-04 (parallel - no file overlap)
@@ -169,7 +169,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. 프로젝트 구조 | 3/3 | Complete | 2026-01-26 |
 | 2. 상태 관리 | 4/4 | Complete | 2026-01-26 |
-| 3. GSD 통합 | 0/4 | Not started | - |
+| 3. GSD 통합 | 4/4 | Complete | 2026-01-26 |
 | 4. OMC 통합 | 0/5 | Not started | - |
 | 5. OpenCode 재구현 | 0/4 | Not started | - |
 | 6. Claude Tasks 동기화 | 0/3 | Not started | - |
