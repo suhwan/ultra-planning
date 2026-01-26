@@ -1,220 +1,178 @@
-# Roadmap: Ultra Planner
+# Roadmap: Ultra Planner v2
 
 ## Overview
 
-Ultra Planner delivers a document-driven workflow orchestration system for Claude Code, integrating the best practices from GSD, OMC, and OpenCode. The journey progresses from foundational document structures through planning agents, sequential execution, Claude Tasks synchronization (the core differentiator), quality verification loops, natural language interface, and finally parallel execution. Each phase builds on the previous, with document-task sync validated early to prove the core value proposition.
+GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실행 오케스트레이션 시스템.
+
+**원칙:**
+- 최고 효율 선택 (구현 필요해도 OK)
+- references/ 참조 + 필요한 것만 복사
+- Git 기반 롤백 + 체크포인트 하이브리드
+- 기존 .planning/ 구조 활용
+
+**Critical Path:** Phase 1 → 2 → 3 → 6 (Tasks 동기화가 핵심)
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-**Dependency Graph:**
-```
-Phase 1 ──> Phase 2 ──> Phase 2.5 ──> Phase 3 ──┬──> Phase 4 ──┬──> Phase 7
-            (Foundation) (PoC Spike)  (Execution) │   (Tasks Sync)│
-                                                  │               │
-                                                  └──> Phase 5 ───┤
-                                                       (Quality)  │
-                                                                  v
-                                                              Phase 6
-                                                           (Natural Lang)
-```
-
-**Critical Path:** Phase 1 → 2 → 2.5 → 3 → 4 → 6 (Tasks API verification is key risk)
-
-- [ ] **Phase 1: Foundation** - Document templates, CLI structure, and state management infrastructure
-- [ ] **Phase 2: Core Planning** - Planner agent generating PROJECT, ROADMAP, and PLAN documents
-- [ ] **Phase 2.5: Tasks API Spike** - INSERTED: Claude Tasks API verification PoC (key risk mitigation)
-- [ ] **Phase 3: Sequential Execution** - Executor and Architect agents with verification gates
-- [ ] **Phase 4: Document-Task Sync** - PLAN to Claude Tasks bidirectional synchronization (core differentiator)
-- [ ] **Phase 5: Quality Layer** - Critic agent and ralplan iterative verification loop
-- [ ] **Phase 6: Natural Language** - Keyword detection, slash commands, and autopilot mode
-- [ ] **Phase 7: Parallelism** - 5-worker parallel execution with file ownership tracking
+- [ ] **Phase 1: 프로젝트 구조** - TypeScript 기반, 디렉토리 구조
+- [ ] **Phase 2: 상태 관리** - 파일 기반 상태, 이벤트 시스템
+- [ ] **Phase 3: GSD 통합** - 문서 템플릿, Planner 에이전트
+- [ ] **Phase 4: OMC 통합** - ralplan, Ultrapilot, 키워드 감지
+- [ ] **Phase 5: OpenCode 재구현** - Ralph Loop 개선, Atlas 강제
+- [ ] **Phase 6: Claude Tasks 동기화** - PLAN.md ↔ Tasks API
+- [ ] **Phase 7: CLI/슬래시 커맨드** - /ultraplan:* 명령어
+- [ ] **Phase 8: 통합 테스트** - E2E 워크플로우 검증
 
 ## Phase Details
 
-### Phase 1: Foundation
-**Goal**: Establish document hierarchy and state management that all other phases depend on
+### Phase 1: 프로젝트 구조
+**Goal**: TypeScript 기반 실행 가능한 프로젝트 구조 생성
 **Depends on**: Nothing (first phase)
-**Requirements**: DOCS-01, DOCS-02, DOCS-03
 **Success Criteria** (what must be TRUE):
-  1. User can run `/ultraplan:new-project` and get PROJECT.md, ROADMAP.md skeleton created
-  2. STATE.md tracks current phase, plan, and status with visual progress bar
-  3. Documents use XML tags for task structure and YAML frontmatter for metadata
-  4. `.ultraplan/` directory structure exists with state, plans, and config subdirectories
+  1. `npm run build` 성공
+  2. .ultraplan/ 디렉토리 존재
+  3. 기본 타입 정의 완료
+**Plans**: 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md - package.json, tsconfig.json 생성
+- [ ] 01-02-PLAN.md - .ultraplan/ 디렉토리 구조 생성
+- [ ] 01-03-PLAN.md - 기본 타입 정의 (types.ts)
+
+### Phase 2: 상태 관리
+**Goal**: 파일 기반 상태 공유 시스템 구현
+**Depends on**: Phase 1
+**Success Criteria** (what must be TRUE):
+  1. 상태 파일 읽기/쓰기 작동
+  2. 이벤트 발행/구독 작동
+  3. 체크포인트 저장/복구 작동
+**Plans**: 4 plans
+
+Plans:
+- [ ] 02-01-PLAN.md - State Manager 구현 (readState, writeState)
+- [ ] 02-02-PLAN.md - Event System 구현 (emitEvent, pollEvents)
+- [ ] 02-03-PLAN.md - Mode Registry 구현 (OMC 패턴 참조)
+- [ ] 02-04-PLAN.md - 체크포인트 매니저 구현
+
+**참조:**
+- `references/oh-my-claudecode/src/hooks/mode-registry/`
+
+### Phase 3: GSD 통합
+**Goal**: GSD 문서 체계와 Planner 에이전트 통합
+**Depends on**: Phase 2
+**Success Criteria** (what must be TRUE):
+  1. PROJECT.md 자동 생성 가능
+  2. ROADMAP.md 자동 생성 가능
+  3. PLAN.md 자동 생성 가능
+  4. 태스크 완료 시 atomic commit
+**Plans**: 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md - 문서 템플릿 복사 + 수정 (PROJECT, ROADMAP, PLAN)
+- [ ] 03-02-PLAN.md - Planner 에이전트 프롬프트 복사 + 수정
+- [ ] 03-03-PLAN.md - XML 프롬프트 포맷 적용
+- [ ] 03-04-PLAN.md - Atomic Commit 패턴 구현
+
+**참조:**
+- `references/get-shit-done/templates/`
+- `references/get-shit-done/agents/gsd-planner.md`
+
+### Phase 4: OMC 통합
+**Goal**: OMC 핵심 기능 통합 (ralplan, Ultrapilot, 키워드)
+**Depends on**: Phase 3
+**Success Criteria** (what must be TRUE):
+  1. ralplan 검증 루프 작동
+  2. 5워커 병렬 실행 작동
+  3. "autopilot", "plan" 키워드 감지
 **Plans**: 5 plans
 
 Plans:
-- [ ] 01-01-PLAN.md - Create .ultraplan/ directory structure and config.json schema
-- [ ] 01-02-PLAN.md - Create document templates (PROJECT, ROADMAP, PLAN)
-- [ ] 01-03-PLAN.md - Create STATE.md template and update protocols
-- [ ] 01-04-PLAN.md - Document YAML frontmatter and XML task schemas
-- [ ] 01-05-PLAN.md - Create SKILL.md and CLI command skeletons
+- [ ] 04-01-PLAN.md - ralplan 스킬 통합 (Planner+Architect+Critic 루프)
+- [ ] 04-02-PLAN.md - Ultrapilot 5워커 패턴 통합
+- [ ] 04-03-PLAN.md - 파일 소유권 추적 구현
+- [ ] 04-04-PLAN.md - 키워드 감지 통합 (magic-keywords)
+- [ ] 04-05-PLAN.md - Architect/Critic 에이전트 프롬프트 복사
 
-### Phase 2: Core Planning
-**Goal**: Generate complete planning documents from user input via Planner agent
-**Depends on**: Phase 1
-**Requirements**: AGENT-02 (planner agent portion)
+**참조:**
+- `references/oh-my-claudecode/src/features/magic-keywords.ts`
+- `references/oh-my-claudecode/commands/ultrapilot.md`
+- `references/oh-my-claudecode/src/hooks/mode-registry/`
+
+### Phase 5: OpenCode 재구현
+**Goal**: OpenCode 패턴 참조해서 Claude Code용으로 재구현
+**Depends on**: Phase 4
 **Success Criteria** (what must be TRUE):
-  1. Planner agent (Opus) generates PROJECT.md from user description
-  2. Planner agent decomposes project into phases in ROADMAP.md
-  3. Planner agent generates PLAN.md with task breakdowns for each phase
-  4. User can review and approve generated documents before proceeding
-**Plans**: 6 plans
+  1. Ralph Loop가 에러에서 복구
+  2. 오케스트레이터가 직접 코드 수정 시 경고
+  3. 서브에이전트 완료 후 검증 리마인더 표시
+**Plans**: 4 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Create Planner agent core with interview protocol
-- [ ] 02-02-PLAN.md — Add PROJECT.md and ROADMAP.md generation logic
-- [ ] 02-03-PLAN.md — Add PLAN.md generation with wave assignment
-- [ ] 02-04-PLAN.md — Create /ultraplan:new-project command
-- [ ] 02-05-PLAN.md — Add review and approval workflow
-- [ ] 02-06-PLAN.md — Integration verification (checkpoint)
+- [ ] 05-01-PLAN.md - Ralph Loop 개선 버전 구현 (에러 복구, 세션 API, 모델 유지)
+- [ ] 05-02-PLAN.md - 오케스트레이터 강제 훅 구현 (직접 수정 금지, Single Task, 검증 리마인더)
+- [ ] 05-03-PLAN.md - Verification Reminder 구현
+- [ ] 05-04-PLAN.md - 에러 복구 + Git 롤백 통합
 
-### Phase 2.5: Tasks API Spike (INSERTED)
-**Goal**: Validate Claude Tasks API feasibility before committing to Phase 4 architecture
-**Depends on**: Phase 2
-**Requirements**: None (risk mitigation spike)
+**참조:**
+- `references/oh-my-opencode/src/hooks/ralph-loop/`
+- `references/oh-my-opencode/src/hooks/atlas/`
+
+### Phase 6: Claude Tasks 동기화
+**Goal**: PLAN.md와 Claude Tasks API 양방향 동기화
+**Depends on**: Phase 5
 **Success Criteria** (what must be TRUE):
-  1. Claude Tasks API capabilities and limitations documented
-  2. PoC demonstrates PLAN.md → Claude Tasks conversion
-  3. PoC demonstrates Claude Tasks → PLAN.md status sync
-  4. API rate limits and constraints identified
-  5. Go/No-Go decision for Phase 4 approach
-**Plans**: TBD (estimated 2-3 plans)
+  1. PLAN.md 생성 시 Tasks 자동 등록
+  2. Task 완료 시 PLAN.md 체크박스 업데이트
+  3. 의존성(wave) → blockedBy 변환
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02.5-01: Claude Tasks API research and documentation
-- [ ] 02.5-02: Bidirectional sync PoC implementation
-- [ ] 02.5-03: Feasibility report and architecture recommendation
+- [ ] 06-01-PLAN.md - PLAN.md 파서 구현 (태스크 추출)
+- [ ] 06-02-PLAN.md - PLAN.md → TaskCreate 동기화
+- [ ] 06-03-PLAN.md - TaskUpdate → PLAN.md 상태 반영
 
-### Phase 3: Sequential Execution
-**Goal**: Execute tasks one at a time with verification gates and atomic commits
-**Depends on**: Phase 2
-**Requirements**: AGENT-01, AGENT-02 (executor and architect portions), EXEC-05
+### Phase 7: CLI/슬래시 커맨드
+**Goal**: 사용자 인터페이스 구현
+**Depends on**: Phase 6
 **Success Criteria** (what must be TRUE):
-  1. Executor agent (Sonnet) runs individual tasks from PLAN.md with fresh 200k context
-  2. Architect agent (Opus) verifies task completion before marking done
-  3. Task results are captured and state is updated after each task
-  4. Failed verifications trigger retry with feedback
-  5. Each completed task triggers atomic git commit with descriptive message
-**Plans**: TBD (estimated 7-9 plans)
+  1. 슬래시 커맨드로 전체 워크플로우 실행 가능
+  2. 키워드로도 트리거 가능
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Executor agent definition (.claude/agents/executor.md)
-- [ ] 03-02: Fresh subagent spawning pattern
-- [ ] 03-03: Architect agent definition (.claude/agents/architect.md)
-- [ ] 03-04: Verification gate protocol
-- [ ] 03-05: Result capture and state updates
-- [ ] 03-06: Retry loop with failure feedback
-- [ ] 03-07: Router for agent coordination
-- [ ] 03-08: Atomic commit protocol per task
+- [ ] 07-01-PLAN.md - /ultraplan:new-project 구현
+- [ ] 07-02-PLAN.md - /ultraplan:plan-phase 구현
+- [ ] 07-03-PLAN.md - /ultraplan:execute 구현
 
-### Phase 4: Document-Task Sync
-**Goal**: Bidirectional synchronization between PLAN.md and Claude Tasks (core differentiator)
-**Depends on**: Phase 3
-**Requirements**: EXEC-01, EXEC-02
+### Phase 8: 통합 테스트
+**Goal**: E2E 워크플로우 검증
+**Depends on**: Phase 7
 **Success Criteria** (what must be TRUE):
-  1. Tasks in PLAN.md automatically register as Claude Tasks
-  2. Task completion in Claude updates PLAN.md status
-  3. Dependency analysis creates correct task execution order
-  4. Sync conflicts are detected with resolution options
-  5. Staleness indicators show when documents are out of sync
-**Plans**: TBD (estimated 6-8 plans)
+  1. 전체 워크플로우 E2E 성공
+  2. 에러 발생 시 롤백 + 재시도 성공
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Claude Tasks API integration research
-- [ ] 04-02: PLAN.md to Claude Tasks conversion
-- [ ] 04-03: Claude Tasks to PLAN.md status sync
-- [ ] 04-04: Dependency graph analysis
-- [ ] 04-05: Conflict detection and resolution
-- [ ] 04-06: Staleness indicators and sync health checks
-- [ ] 04-07: Sync reconciliation rules
-
-### Phase 5: Quality Layer
-**Goal**: Iterative verification loop ensuring plans meet quality standards before execution
-**Depends on**: Phase 2 (Planner for ralplan), Phase 3 (Executor/Architect)
-**Requirements**: AGENT-02 (critic portion), AGENT-03, AGENT-04
-**Success Criteria** (what must be TRUE):
-  1. Critic agent (Opus) reviews plans and identifies gaps
-  2. Ralplan loop (Planner + Architect + Critic) iterates until consensus
-  3. Verification protocol runs automatically after execution
-  4. User receives clear approval/rejection with actionable feedback
-**Plans**: TBD (estimated 5-7 plans)
-
-Plans:
-- [ ] 05-01: Critic agent definition (.claude/agents/critic.md)
-- [ ] 05-02: Plan review protocol
-- [ ] 05-03: Ralplan iteration loop
-- [ ] 05-04: Consensus detection logic
-- [ ] 05-05: Post-execution verification protocol
-- [ ] 05-06: Approval/rejection workflow with feedback
-
-### Phase 6: Natural Language
-**Goal**: Natural language interface with keyword detection and autopilot mode
-**Depends on**: Phase 4, Phase 5
-**Requirements**: NL-01, NL-02, NL-03, NL-04
-**Success Criteria** (what must be TRUE):
-  1. User can run `/ultraplan:plan`, `/ultraplan:execute`, `/ultraplan:status` commands
-  2. Ambiguous requests trigger clarifying questions before proceeding
-  3. Keywords "autopilot", "plan", "execute" trigger appropriate behaviors
-  4. Autopilot mode executes end-to-end without manual intervention
-  5. Manual mode (default) requires explicit triggers for each step
-**Plans**: TBD (estimated 6-8 plans)
-
-Plans:
-- [ ] 06-01: Slash command router implementation
-- [ ] 06-02: Keyword detection system
-- [ ] 06-03: Intent classification logic
-- [ ] 06-04: Ambiguity detection and question generation
-- [ ] 06-05: Autopilot mode orchestration
-- [ ] 06-06: Manual mode step-by-step workflow
-- [ ] 06-07: Mode switching logic
-
-### Phase 7: Parallelism
-**Goal**: Execute up to 5 tasks in parallel with file ownership tracking
-**Depends on**: Phase 3 (Executor), Phase 4 (Tasks Sync for dependency waves)
-**Requirements**: EXEC-03, EXEC-04
-**Success Criteria** (what must be TRUE):
-  1. Up to 5 executor workers run concurrently on independent tasks
-  2. File ownership is tracked per worker to prevent conflicts
-  3. Wave-based grouping dispatches dependency-free tasks together
-  4. Parallel write conflicts are detected and prevented before execution
-  5. Results from all workers are merged and reconciled
-**Plans**: TBD (estimated 7-9 plans)
-
-Plans:
-- [ ] 07-01: Task queue with dependency waves
-- [ ] 07-02: File ownership tracking system
-- [ ] 07-03: Worker pool management (max 5)
-- [ ] 07-04: Pre-execution conflict detection
-- [ ] 07-05: Concurrent task dispatch
-- [ ] 07-06: Result collection and merging
-- [ ] 07-07: Conflict resolution strategies
-- [ ] 07-08: Worker health and timeout handling
+- [ ] 08-01-PLAN.md - "Todo API 만들어줘" 시나리오 테스트
+- [ ] 08-02-PLAN.md - 에러 복구 시나리오 테스트
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 2.5 → 3 → 4 → 5 → 6 → 7
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/5 | Planned | - |
-| 2. Core Planning | 0/6 | Planned | - |
-| 2.5. Tasks API Spike | 0/3 | Not started | - |
-| 3. Sequential Execution | 0/8 | Not started | - |
-| 4. Document-Task Sync | 0/7 | Not started | - |
-| 5. Quality Layer | 0/6 | Not started | - |
-| 6. Natural Language | 0/7 | Not started | - |
-| 7. Parallelism | 0/8 | Not started | - |
+| 1. 프로젝트 구조 | 0/3 | Planned | - |
+| 2. 상태 관리 | 0/4 | Not started | - |
+| 3. GSD 통합 | 0/4 | Not started | - |
+| 4. OMC 통합 | 0/5 | Not started | - |
+| 5. OpenCode 재구현 | 0/4 | Not started | - |
+| 6. Claude Tasks 동기화 | 0/3 | Not started | - |
+| 7. CLI/슬래시 커맨드 | 0/3 | Not started | - |
+| 8. 통합 테스트 | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-26*
-*Roadmap revised: 2026-01-26 (Architect review)*
-*Phase 1 planned: 2026-01-26*
-*Depth: comprehensive (8 phases, 49 estimated plans)*
-*Coverage: 16/16 v1 requirements mapped*
+*Version: v2 (실제 구현용)*
+*Total: 8 Phases, 28 Plans*
