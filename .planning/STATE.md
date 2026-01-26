@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-01-26)
 ## Current Position
 
 Phase: 6 of 8 (Claude Tasks Sync)
-Plan: 1 of 3
+Plan: 2 of 3
 Status: In progress
-Last activity: 2026-01-27 - Completed 06-01-PLAN.md
+Last activity: 2026-01-27 - Completed 06-02-PLAN.md
 
-Progress: [██████▓░░░] 75% (21/28 plans complete)
+Progress: [██████▓░░░] 79% (22/28 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 22
 - Average duration: ~3-5m per plan
 - Total execution time: -
 
@@ -32,11 +32,11 @@ Progress: [██████▓░░░] 75% (21/28 plans complete)
 | 3. GSD 통합 | 4/4 | Complete |
 | 4. OMC 통합 | 5/5 | Complete |
 | 5. OpenCode 재구현 | 4/4 | Complete |
-| 6. Claude Tasks Sync | 1/3 | In progress |
+| 6. Claude Tasks Sync | 2/3 | In progress |
 
 **Recent Trend:**
-- Last 3 plans: 05-04, 06-01
-- Trend: Phase 6 started
+- Last 3 plans: 05-04, 06-01, 06-02
+- Trend: Phase 6 progressing
 
 *Updated after each plan completion*
 
@@ -54,6 +54,7 @@ Progress: [██████▓░░░] 75% (21/28 plans complete)
 - [05-03]: Verification reminder shows after subagent completion; doesn't block
 - [05-04]: Default cooldown 5s, max retries 3, state-only rollback
 - [06-01]: Task ID format {phase}-{plan:02d}-{task:02d}, deterministic and sortable
+- [06-02]: Wave dependency model - tasks in wave N blocked by ALL tasks in waves 1..N-1
 
 ### Key References
 
@@ -73,10 +74,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 06-01-PLAN.md
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
 
 ---
 *State initialized: 2026-01-26*
 *Roadmap version: v2*
-*Next action: Continue Phase 6 with 06-02-PLAN.md (State Bridge)*
+*Next action: Continue Phase 6 with 06-03-PLAN.md (Orchestrator)*
