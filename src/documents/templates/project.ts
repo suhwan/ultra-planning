@@ -14,7 +14,16 @@ export function generateProjectMd(config: ProjectDocumentConfig): string {
     ? `${config.lastUpdated.date} after ${config.lastUpdated.trigger}`
     : new Date().toISOString().split('T')[0];
 
-  return `# ${config.name}
+  // Frontmatter for PROJECT.md
+  const frontmatter = `---
+name: "${config.name}"
+core_value: "${config.coreValue}"
+last_updated: ${lastUpdated}
+---
+
+`;
+
+  return frontmatter + `# ${config.name}
 
 ## What This Is
 
