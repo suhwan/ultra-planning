@@ -23,6 +23,9 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 7: CLI/슬래시 커맨드** - /ultraplan:* 명령어
 - [x] **Phase 8: 통합 테스트** - E2E 워크플로우 검증
 - [x] **Phase 9: 코드 품질 자동화** - LSP 진단, AST 분석, 코드 리뷰
+- [ ] **Phase 10: 컨텍스트 모니터** - 토큰 추적, 중간 반환 패턴
+- [ ] **Phase 11: Tasks API 실제 연동** - TaskCreate/Update 실제 호출
+- [ ] **Phase 12: Notepad 학습 시스템** - 서브에이전트 학습 누적
 
 ## Phase Details
 
@@ -218,6 +221,114 @@ Plans:
 - `references/oh-my-opencode/src/hooks/ast/` - AST 파싱 패턴
 - `references/oh-my-claudecode/agents/code-reviewer.md` - 코드 리뷰 에이전트
 
+### Phase 10: 컨텍스트 모니터
+**Goal**: 컨텍스트 윈도우 사용량 모니터링 및 중간 반환 패턴 구현
+**Depends on**: Phase 9
+**Success Criteria** (what must be TRUE):
+  1. 컨텍스트 사용량 실시간 추적 가능 (text.length / 4 추정)
+  2. 70% 초과 시 체크포인트 준비 (현재 작업 마무리)
+  3. 85% 초과 시 중간 반환 (completed + remaining + context)
+  4. Orchestrator가 체크포인트에서 새 서브에이전트로 계속
+**Plans**: 4 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — 토큰 추정기 및 누적 추적 (text.length/4, context tracker)
+- [ ] 10-02-PLAN.md — 임계값 감지 및 ContextMonitor (70%/85%, 상태 파일)
+- [ ] 10-03-PLAN.md — 중간 반환 패턴 (CheckpointReturn 구조, builder)
+- [ ] 10-04-PLAN.md — Orchestrator 상태 폴링 (서브에이전트 감시, 5s 간격)
+
+**Wave Structure:**
+- Wave 1: 10-01, 10-03, 10-04 (parallel - different files)
+- Wave 2: 10-02 (depends on 10-01 for estimator)
+
+**핵심 패턴: 중간 반환 (Checkpoint Return)**
+```yaml
+checkpoint:
+  completed:
+    - file: "src/types.ts"
+      status: "done"
+      tests: "passed"
+  remaining:
+    - file: "src/service.ts"
+      description: "utils.ts 패턴 따라서 구현"
+  context:
+    decisions: ["Zod 3.23 사용"]
+    patterns: ["utils.ts:15-30 에러 핸들링 참고"]
+```
+
+**중요**: "서두르기" 금지! 70%는 "깔끔한 인수인계" 준비 시점
+
+**참조:**
+- `references/oh-my-opencode/src/hooks/context-window-monitor.ts` - 컨텍스트 모니터 패턴
+- `references/oh-my-claudecode/src/hooks/preemptive-compaction/` - 선제적 컴팩션 패턴
+
+### Phase 11: Tasks API 실제 연동
+**Goal**: Claude Code Tasks API를 실제로 호출하여 태스크 추적 및 시각화
+**Depends on**: Phase 10
+**Success Criteria** (what must be TRUE):
+  1. PLAN.md 파싱 시 TaskCreate 실제 호출됨
+  2. Wave 의존성이 blockedBy로 정확히 변환됨
+  3. 태스크 완료 시 TaskUpdate 호출로 상태 동기화
+  4. TaskList로 현재 진행상황 조회 가능
+**Plans**: 3 plans
+
+Plans:
+- [ ] 11-01-PLAN.md - TaskCreate 호출 구현 (plan-parser → Task tool invocation)
+- [ ] 11-02-PLAN.md - blockedBy 의존성 연동 (wave → blocked 상태 매핑)
+- [ ] 11-03-PLAN.md - TaskUpdate/TaskList 동기화 (상태 변경, 진행상황 표시)
+
+**Wave Structure:**
+- Wave 1: 11-01 (foundation - TaskCreate)
+- Wave 2: 11-02, 11-03 (parallel - depend on 11-01)
+
+**참조:**
+- `src/sync/task-mapper.ts` - 기존 매핑 로직 (활용)
+- `src/sync/dependency-map.ts` - 의존성 맵 (활용)
+- `.claude/commands/ultraplan-execute.md` - 명령어 문서 (통합)
+
+### Phase 12: Notepad 학습 시스템
+**Goal**: 서브에이전트 간 학습 공유 및 프로젝트 레벨 누적
+**Depends on**: Phase 10
+**Success Criteria** (what must be TRUE):
+  1. 서브에이전트가 학습 내용을 notepad에 기록
+  2. Orchestrator가 다음 서브에이전트에 학습 전달
+  3. 플랜 간, Phase 간 학습이 누적됨
+  4. 프로젝트 레벨 학습 요약 조회 가능
+**Plans**: 3 plans
+
+Plans:
+- [ ] 12-01-PLAN.md - Notepad 구조 및 API (learnings, decisions, issues)
+- [ ] 12-02-PLAN.md - 플랜 내 학습 전파 (orchestrator → subagent 주입)
+- [ ] 12-03-PLAN.md - 프로젝트 레벨 누적 학습 (cross-plan 병합, 요약 생성)
+
+**Wave Structure:**
+- Wave 1: 12-01 (foundation - notepad structure)
+- Wave 2: 12-02 (depends on 12-01)
+- Wave 3: 12-03 (depends on 12-02)
+
+**Notepad 구조:**
+```
+.ultraplan/notepads/
+├── {plan-id}/              # 플랜별 학습
+│   ├── learnings.md
+│   ├── decisions.md
+│   └── issues.md
+└── _project/               # 프로젝트 레벨 누적
+    ├── learnings.md        # 모든 플랜에서 병합
+    ├── decisions.md        # 아키텍처 결정 히스토리
+    ├── patterns.md         # 발견된 코드 패턴
+    └── summary.md          # 자동 생성 요약
+```
+
+**누적 학습 흐름:**
+1. 서브에이전트가 `{plan-id}/learnings.md`에 기록
+2. 플랜 완료 시 `_project/learnings.md`에 병합
+3. 다음 플랜 시작 시 `_project/*` 컨텍스트로 주입
+
+**참조:**
+- `references/oh-my-opencode/docs/guide/understanding-orchestration-system.md` - Notepad 패턴
+- `references/oh-my-claudecode/src/hooks/notepad/` - 노트패드 API
+
 ## Progress
 
 **Execution Order:**
@@ -234,8 +345,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 7. CLI/슬래시 커맨드 | 3/3 | Complete | 2026-01-27 |
 | 8. 통합 테스트 | 2/2 | Complete | 2026-01-27 |
 | 9. 코드 품질 자동화 | 4/4 | Complete | 2026-01-27 |
+| 10. 컨텍스트 모니터 | 0/4 | Pending | - |
+| 11. Tasks API 실제 연동 | 0/3 | Pending | - |
+| 12. Notepad 학습 시스템 | 0/3 | Pending | - |
 
 ---
 *Roadmap created: 2026-01-26*
 *Version: v2 (실제 구현용)*
-*Total: 9 Phases, 32 Plans*
+*Total: 12 Phases, 42 Plans*
