@@ -129,3 +129,30 @@ export function completeTask(taskId: string): TaskUpdateInvocation {
     status: 'completed',
   });
 }
+
+/**
+ * Create a TaskUpdate invocation to set blockedBy dependencies.
+ *
+ * Convenience function for setting task dependencies.
+ * Use this after tasks are created to wire up wave-based dependencies.
+ *
+ * @param taskId - Claude's task ID to update
+ * @param blockedBy - Array of Claude task IDs that block this task
+ * @returns TaskUpdate invocation structure
+ *
+ * @example
+ * ```typescript
+ * // Wire Wave 2 task to be blocked by Wave 1 tasks
+ * const invocation = createDependencyUpdate('3', ['1', '2']);
+ * // invocation.params.addBlockedBy === ['1', '2']
+ * ```
+ */
+export function createDependencyUpdate(
+  taskId: string,
+  blockedBy: string[]
+): TaskUpdateInvocation {
+  return updateTask({
+    taskId,
+    addBlockedBy: blockedBy,
+  });
+}
