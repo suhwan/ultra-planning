@@ -23,7 +23,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 7: CLI/슬래시 커맨드** - /ultraplan:* 명령어
 - [x] **Phase 8: 통합 테스트** - E2E 워크플로우 검증
 - [x] **Phase 9: 코드 품질 자동화** - LSP 진단, AST 분석, 코드 리뷰
-- [ ] **Phase 10: 컨텍스트 모니터** - 토큰 추적, 중간 반환 패턴
+- [x] **Phase 10: 컨텍스트 모니터** - 토큰 추적, 중간 반환 패턴
 - [ ] **Phase 11: Tasks API 실제 연동** - TaskCreate/Update 실제 호출
 - [ ] **Phase 12: Notepad 학습 시스템** - 서브에이전트 학습 누적
 
@@ -273,12 +273,12 @@ checkpoint:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01-PLAN.md - TaskCreate 호출 구현 (plan-parser → Task tool invocation)
-- [ ] 11-02-PLAN.md - blockedBy 의존성 연동 (wave → blocked 상태 매핑)
-- [ ] 11-03-PLAN.md - TaskUpdate/TaskList 동기화 (상태 변경, 진행상황 표시)
+- [ ] 11-01-PLAN.md — TaskCreate API wrapper + Task ID registry (types, api.ts, registry.ts)
+- [ ] 11-02-PLAN.md — BlockedBy dependency wiring (wave-to-blockedBy via TaskUpdate)
+- [ ] 11-03-PLAN.md — Status sync + progress visualization (TaskUpdate, TaskList)
 
 **Wave Structure:**
-- Wave 1: 11-01 (foundation - TaskCreate)
+- Wave 1: 11-01 (foundation - TaskCreate + registry)
 - Wave 2: 11-02, 11-03 (parallel - depend on 11-01)
 
 **참조:**
@@ -345,8 +345,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 7. CLI/슬래시 커맨드 | 3/3 | Complete | 2026-01-27 |
 | 8. 통합 테스트 | 2/2 | Complete | 2026-01-27 |
 | 9. 코드 품질 자동화 | 4/4 | Complete | 2026-01-27 |
-| 10. 컨텍스트 모니터 | 0/4 | Pending | - |
-| 11. Tasks API 실제 연동 | 0/3 | Pending | - |
+| 10. 컨텍스트 모니터 | 4/4 | Complete | 2026-01-27 |
+| 11. Tasks API 실제 연동 | 0/3 | Planned | - |
 | 12. Notepad 학습 시스템 | 0/3 | Pending | - |
 
 ---
