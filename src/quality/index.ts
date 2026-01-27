@@ -10,3 +10,6 @@ export * from './lsp/index.js';
 
 // AST analysis (Phase 9.2)
 export * from './ast/index.js';
+
+// Code review (Phase 9.3)
+export * from './review/index.js';
