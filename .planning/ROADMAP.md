@@ -24,7 +24,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 8: 통합 테스트** - E2E 워크플로우 검증
 - [x] **Phase 9: 코드 품질 자동화** - LSP 진단, AST 분석, 코드 리뷰
 - [x] **Phase 10: 컨텍스트 모니터** - 토큰 추적, 중간 반환 패턴
-- [ ] **Phase 11: Tasks API 실제 연동** - TaskCreate/Update 실제 호출
+- [x] **Phase 11: Tasks API 실제 연동** - TaskCreate/Update 실제 호출
 - [ ] **Phase 12: Notepad 학습 시스템** - 서브에이전트 학습 누적
 
 ## Phase Details
@@ -273,9 +273,9 @@ checkpoint:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — TaskCreate API wrapper + Task ID registry (types, api.ts, registry.ts)
-- [ ] 11-02-PLAN.md — BlockedBy dependency wiring (wave-to-blockedBy via TaskUpdate)
-- [ ] 11-03-PLAN.md — Status sync + progress visualization (TaskUpdate, TaskList)
+- [x] 11-01-PLAN.md — TaskCreate API wrapper + Task ID registry (types, api.ts, registry.ts)
+- [x] 11-02-PLAN.md — BlockedBy dependency wiring (wave-to-blockedBy via TaskUpdate)
+- [x] 11-03-PLAN.md — Status sync + progress visualization (TaskUpdate, TaskList)
 
 **Wave Structure:**
 - Wave 1: 11-01 (foundation - TaskCreate + registry)
@@ -346,7 +346,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 8. 통합 테스트 | 2/2 | Complete | 2026-01-27 |
 | 9. 코드 품질 자동화 | 4/4 | Complete | 2026-01-27 |
 | 10. 컨텍스트 모니터 | 4/4 | Complete | 2026-01-27 |
-| 11. Tasks API 실제 연동 | 0/3 | Planned | - |
+| 11. Tasks API 실제 연동 | 3/3 | Complete | 2026-01-27 |
 | 12. Notepad 학습 시스템 | 0/3 | Pending | - |
 
 ---
