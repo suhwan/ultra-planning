@@ -25,7 +25,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 9: 코드 품질 자동화** - LSP 진단, AST 분석, 코드 리뷰
 - [x] **Phase 10: 컨텍스트 모니터** - 토큰 추적, 중간 반환 패턴
 - [x] **Phase 11: Tasks API 실제 연동** - TaskCreate/Update 실제 호출
-- [ ] **Phase 12: Notepad 학습 시스템** - 서브에이전트 학습 누적
+- [x] **Phase 12: Notepad 학습 시스템** - 서브에이전트 학습 누적
 
 ## Phase Details
 
@@ -297,9 +297,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 12-01-PLAN.md - Notepad 구조 및 API (learnings, decisions, issues)
-- [ ] 12-02-PLAN.md - 플랜 내 학습 전파 (orchestrator → subagent 주입)
-- [ ] 12-03-PLAN.md - 프로젝트 레벨 누적 학습 (cross-plan 병합, 요약 생성)
+- [x] 12-01-PLAN.md - Notepad 구조 및 API (learnings, decisions, issues)
+- [x] 12-02-PLAN.md - 플랜 내 학습 전파 (orchestrator → subagent 주입)
+- [x] 12-03-PLAN.md - 프로젝트 레벨 누적 학습 (cross-plan 병합, 요약 생성)
 
 **Wave Structure:**
 - Wave 1: 12-01 (foundation - notepad structure)
@@ -347,7 +347,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 9. 코드 품질 자동화 | 4/4 | Complete | 2026-01-27 |
 | 10. 컨텍스트 모니터 | 4/4 | Complete | 2026-01-27 |
 | 11. Tasks API 실제 연동 | 3/3 | Complete | 2026-01-27 |
-| 12. Notepad 학습 시스템 | 0/3 | Pending | - |
+| 12. Notepad 학습 시스템 | 3/3 | Complete | 2026-01-27 |
 
 ---
 *Roadmap created: 2026-01-26*
