@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-26)
 
 **Core value:** GSD + OMC + OpenCode 통합 오케스트레이션 시스템
-**Current focus:** Phase 6 - Claude Tasks Sync
+**Current focus:** Phase 11 - Tasks API 실제 연동
 
 ## Current Position
 
-Phase: 10 of 12 (Context Window Monitor)
-Plan: 4 of 4 (Phase 10 complete)
-Status: Complete - All context monitoring features implemented
-Last activity: 2026-01-27 - Completed Plan 10-02 (Threshold Detection and ContextMonitor)
+Phase: 11 of 12 (Tasks API 실제 연동)
+Plan: 1 of 3 (11-01 complete)
+Status: In progress
+Last activity: 2026-01-27 - Completed Plan 11-01 (Tasks API Types and Registry)
 
-Progress: [████████░░] 81% (34/42 plans complete)
+Progress: [████████░░] 83% (35/42 plans complete)
 
 ## Performance Metrics
 
@@ -37,12 +37,12 @@ Progress: [████████░░] 81% (34/42 plans complete)
 | 8. Integration Testing | 2/2 | Complete |
 | 9. 코드 품질 자동화 | 4/4 | Complete |
 | 10. 컨텍스트 모니터 | 4/4 | Complete |
-| 11. Tasks API 실제 연동 | 0/3 | Pending |
+| 11. Tasks API 실제 연동 | 1/3 | In Progress |
 | 12. Notepad 학습 시스템 | 0/3 | Pending |
 
 **Recent Trend:**
-- Last 3 plans: 10-02, 10-03, 10-04
-- Trend: Phase 10 complete - Context monitoring fully implemented
+- Last 3 plans: 10-04, 11-01
+- Trend: Started Phase 11 - Tasks API integration
 
 *Updated after each plan completion*
 
@@ -69,6 +69,8 @@ Progress: [████████░░] 81% (34/42 plans complete)
 - [Phase 10]: "서두르기" 금지 - 70%는 "깔끔한 인수인계" 준비, 중간 반환 패턴 사용
 - [Phase 10]: 토큰 추정 = text.length / 4 (CHARS_PER_TOKEN)
 - [Phase 12]: oh-my-opencode Notepad 패턴 채택 - learnings/decisions/issues
+- [11-01]: Tool invocation structure pattern - functions return {tool, params} for orchestrator
+- [11-01]: TaskRegistry with Map storage + frontmatter persistence via gray-matter
 
 ### Key References
 
@@ -88,10 +90,10 @@ None
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed Plan 10-03 (Checkpoint Return structure and builder)
+Stopped at: Completed Plan 11-01 (Tasks API Types and Registry)
 Resume file: None
 
 ---
 *State initialized: 2026-01-26*
 *Roadmap version: v2*
-*Status: Phase 10 in progress - 33/42 plans complete (78%)*
+*Status: Phase 11 in progress - 35/42 plans complete (83%)*
