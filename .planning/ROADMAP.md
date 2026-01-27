@@ -232,10 +232,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — 토큰 추정기 및 누적 추적 (text.length/4, context tracker)
-- [ ] 10-02-PLAN.md — 임계값 감지 및 ContextMonitor (70%/85%, 상태 파일)
-- [ ] 10-03-PLAN.md — 중간 반환 패턴 (CheckpointReturn 구조, builder)
-- [ ] 10-04-PLAN.md — Orchestrator 상태 폴링 (서브에이전트 감시, 5s 간격)
+- [x] 10-01-PLAN.md — 토큰 추정기 및 누적 추적 (text.length/4, context tracker)
+- [x] 10-02-PLAN.md — 임계값 감지 및 ContextMonitor (70%/85%, 상태 파일)
+- [x] 10-03-PLAN.md — 중간 반환 패턴 (CheckpointReturn 구조, builder)
+- [x] 10-04-PLAN.md — Orchestrator 상태 폴링 (서브에이전트 감시, 5s 간격)
 
 **Wave Structure:**
 - Wave 1: 10-01, 10-03, 10-04 (parallel - different files)

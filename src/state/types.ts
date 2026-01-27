@@ -93,7 +93,9 @@ export type StateEventType =
   | 'ralph_loop_failed'
   // Phase 5 additions - Orchestrator events
   | 'orchestrator_warning'
-  | 'verification_required';
+  | 'verification_required'
+  // Phase 10 additions - Context monitoring
+  | 'context_threshold_reached';
 
 /** Result of polling events from the event file */
 export interface EventPollResult {
