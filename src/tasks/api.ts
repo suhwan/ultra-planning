@@ -156,3 +156,22 @@ export function createDependencyUpdate(
     addBlockedBy: blockedBy,
   });
 }
+
+// ============================================================================
+// Task Listing
+// ============================================================================
+
+/**
+ * List all tasks in Claude Tasks.
+ *
+ * NOTE: Generates TaskList tool invocation structure.
+ * Actual tool call happens via Claude's tool execution system.
+ *
+ * @returns TaskList invocation
+ */
+export function listTasks(): { tool: 'TaskList'; params: Record<string, never> } {
+  return {
+    tool: 'TaskList',
+    params: {},
+  };
+}
