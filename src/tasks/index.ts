@@ -38,3 +38,16 @@ export {
 // ============================================================================
 
 export { TaskRegistry, createTaskRegistry } from './registry.js';
+
+// ============================================================================
+// Dependencies
+// ============================================================================
+
+export {
+  setTaskDependencies,
+  generateTaskCreations,
+  generateDependencyUpdates,
+  preparePlanRegistration,
+} from './dependencies.js';
+
+export type { TaskToolInvocation } from './dependencies.js';
