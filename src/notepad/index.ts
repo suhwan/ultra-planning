@@ -60,3 +60,18 @@ export {
   addIssue,
   addProjectLearning,
 } from './api.js';
+
+// Read API
+export {
+  getWisdomForPlan,
+  getProjectWisdom,
+  extractRecentEntries,
+  readNotepadFile,
+} from './reader.js';
+
+// Injection
+export {
+  formatWisdomForPrompt,
+  createWisdomDirective,
+  hasWisdom,
+} from './injector.js';
