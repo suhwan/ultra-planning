@@ -13,3 +13,6 @@ export * from './ast/index.js';
 
 // Code review (Phase 9.3)
 export * from './review/index.js';
+
+// Quality pipeline (Phase 9.4)
+export * from './pipeline/index.js';
