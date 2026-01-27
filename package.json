@@ -21,6 +21,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@ast-grep/napi": "^0.40.5",
     "gray-matter": "^4.0.3",
     "simple-git": "^3.30.0",
     "uuid": "^13.0.0",

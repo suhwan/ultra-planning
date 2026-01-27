@@ -2,8 +2,11 @@
  * Quality Module
  *
  * Code quality automation tools including LSP diagnostics,
- * linting, and automated quality checks.
+ * AST analysis, linting, and automated quality checks.
  */
 
 // LSP diagnostics (Phase 9.1)
 export * from './lsp/index.js';
+
+// AST analysis (Phase 9.2)
+export * from './ast/index.js';
