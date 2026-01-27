@@ -75,3 +75,10 @@ export {
   createWisdomDirective,
   hasWisdom,
 } from './injector.js';
+
+// Merge & Summary
+export {
+  mergePlanToProject,
+  generateProjectSummary,
+  mergeAllPlansToProject,
+} from './merger.js';
