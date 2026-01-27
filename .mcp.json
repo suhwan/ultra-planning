@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ultra-planner": {
+      "command": "node",
+      "args": ["./dist/mcp-server.js"],
+      "cwd": "/home/ubuntu/code/ultra-planning"
+    }
+  }
+}

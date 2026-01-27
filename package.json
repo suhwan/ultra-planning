@@ -5,6 +5,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "ultra-planner-mcp": "./dist/mcp-server.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -15,13 +18,15 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "mcp": "node dist/mcp-server.js"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "dependencies": {
     "@ast-grep/napi": "^0.40.5",
+    "@modelcontextprotocol/sdk": "^1.25.3",
     "gray-matter": "^4.0.3",
     "simple-git": "^3.30.0",
     "uuid": "^13.0.0",
