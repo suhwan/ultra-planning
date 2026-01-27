@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-26)
 ## Current Position
 
 Phase: 12 of 12 (Notepad 학습 시스템)
-Plan: 1 of 3 (12-01 complete)
+Plan: 2 of 3 (12-02 complete)
 Status: In progress
-Last activity: 2026-01-27 - Completed Plan 12-01 (Notepad Foundation)
+Last activity: 2026-01-27 - Completed Plan 12-02 (Reader & Injector)
 
-Progress: [█████████░] 90% (38/42 plans complete)
+Progress: [█████████░] 93% (39/42 plans complete)
 
 ## Performance Metrics
 
@@ -41,8 +41,8 @@ Progress: [█████████░] 90% (38/42 plans complete)
 | 12. Notepad 학습 시스템 | 1/3 | In Progress |
 
 **Recent Trend:**
-- Last 3 plans: 11-02, 11-03, 12-01
-- Trend: Phase 12 started, notepad foundation complete
+- Last 3 plans: 11-03, 12-01, 12-02
+- Trend: Phase 12 progressing, reader & injector complete
 
 *Updated after each plan completion*
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 90% (38/42 plans complete)
 - [11-02]: Two-phase registration pattern - create tasks first, wire dependencies after registry populated
 - [11-03]: Router 'failed' state maps to Claude 'pending' for retry capability
 - [12-01]: Append-only markdown entries with ## timestamp | Task: taskId format
+- [12-02]: Wisdom priority order issues > decisions > learnings (most actionable first)
 
 ### Key References
 
@@ -94,10 +95,10 @@ None
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed Plan 12-01 (Notepad Foundation)
+Stopped at: Completed Plan 12-02 (Reader & Injector)
 Resume file: None
 
 ---
 *State initialized: 2026-01-26*
 *Roadmap version: v2*
-*Status: Phase 12 in progress - 38/42 plans complete (90%)*
+*Status: Phase 12 in progress - 39/42 plans complete (93%)*
