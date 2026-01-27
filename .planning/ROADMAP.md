@@ -22,6 +22,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 6: Claude Tasks 동기화** - PLAN.md ↔ Tasks API
 - [x] **Phase 7: CLI/슬래시 커맨드** - /ultraplan:* 명령어
 - [x] **Phase 8: 통합 테스트** - E2E 워크플로우 검증
+- [x] **Phase 9: 코드 품질 자동화** - LSP 진단, AST 분석, 코드 리뷰
 
 ## Phase Details
 
@@ -191,6 +192,32 @@ Plans:
 - Research: `.planning/phases/08-integration-testing/08-RESEARCH.md`
 - Test patterns: Vitest with temp directories, test.extend() fixtures
 
+### Phase 9: 코드 품질 자동화
+**Goal**: LSP 진단, AST 분석, 코드 리뷰 자동화로 코드 품질 보장
+**Depends on**: Phase 8
+**Success Criteria** (what must be TRUE):
+  1. 태스크 완료 후 자동 LSP 진단 실행
+  2. AST 파싱으로 코드 구조 분석 가능
+  3. 코드 리뷰 에이전트가 품질 피드백 제공
+  4. 진단 결과가 상태 파일에 기록
+**Plans**: 4 plans
+
+Plans:
+- [ ] 09-01-PLAN.md - LSP 진단 자동화 (lsp_diagnostics 호출, 에러 파싱, 상태 연동)
+- [ ] 09-02-PLAN.md - AST 파서 구현 (TypeScript AST 분석, 함수/클래스 추출)
+- [ ] 09-03-PLAN.md - 코드 리뷰 에이전트 (품질 체크리스트, 피드백 생성)
+- [ ] 09-04-PLAN.md - 통합 파이프라인 (태스크 완료 → LSP → AST → 리뷰)
+
+**Wave Structure:**
+- Wave 1: 09-01, 09-02 (parallel - no file overlap)
+- Wave 2: 09-03 (depends on 09-02 for AST types)
+- Wave 3: 09-04 (depends on all above)
+
+**참조:**
+- `references/oh-my-opencode/src/hooks/lsp/` - LSP 통합 패턴
+- `references/oh-my-opencode/src/hooks/ast/` - AST 파싱 패턴
+- `references/oh-my-claudecode/agents/code-reviewer.md` - 코드 리뷰 에이전트
+
 ## Progress
 
 **Execution Order:**
@@ -206,8 +233,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 6. Claude Tasks 동기화 | 3/3 | Complete | 2026-01-27 |
 | 7. CLI/슬래시 커맨드 | 3/3 | Complete | 2026-01-27 |
 | 8. 통합 테스트 | 2/2 | Complete | 2026-01-27 |
+| 9. 코드 품질 자동화 | 4/4 | Complete | 2026-01-27 |
 
 ---
 *Roadmap created: 2026-01-26*
 *Version: v2 (실제 구현용)*
-*Total: 8 Phases, 28 Plans*
+*Total: 9 Phases, 32 Plans*
