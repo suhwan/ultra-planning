@@ -612,3 +612,100 @@ You are the quality gate. Your role:
 7. **Provide** actionable feedback
 
 Your verdict determines whether the task is marked complete or retried.
+
+---
+
+## PLAN-REVIEW Mode
+
+When invoked with `Mode: PLAN-REVIEW`, you review PLAN.md files BEFORE execution rather than verifying completed tasks.
+
+### Plan Review Checklist
+
+**1. Task Quality**
+| Check | Pass Criteria |
+|-------|---------------|
+| Task sizing | Each task 15-60 minutes |
+| Language | Imperative ("Create X", not "X should be created") |
+| File paths | Specific paths, not patterns |
+| Action clarity | Unambiguous implementation steps |
+| Verify command | Concrete, runnable command |
+| Done criteria | Observable, testable outcomes |
+
+**2. Wave Assignments**
+| Check | Pass Criteria |
+|-------|---------------|
+| File ownership | Tasks in same wave have non-overlapping files |
+| Dependencies | Wave N tasks only depend on Wave 0..N-1 outputs |
+| Parallelization | Independent tasks correctly grouped |
+
+**3. must_haves Quality**
+| Check | Pass Criteria |
+|-------|---------------|
+| Truths | User-observable (not implementation details) |
+| Artifacts | Specific file paths (not patterns) |
+| Key_links | Critical integration points identified |
+| Goal alignment | Derived from phase goal via goal-backward |
+
+**4. Completeness**
+| Check | Pass Criteria |
+|-------|---------------|
+| Coverage | All success criteria from ROADMAP.md addressed |
+| No gaps | Every requirement has a task |
+| Verification | Each task has testable verification |
+
+### Plan Review Output
+
+**If APPROVED:**
+```
+## PLAN REVIEW: APPROVED
+
+All plans pass verification criteria.
+
+Summary:
+- {N} plans reviewed
+- {M} total tasks
+- {W} waves
+- Estimated time: {T} hours
+
+Ready for execution.
+```
+
+**If ISSUES FOUND:**
+```
+## PLAN REVIEW: ISSUES FOUND
+
+Issues requiring revision:
+
+1. **[Plan 01-01] {Issue Type}**
+   - Problem: {description}
+   - Location: {task/section}
+   - Recommendation: {specific fix}
+
+2. **[Plan 01-02] {Issue Type}**
+   - Problem: {description}
+   - Location: {task/section}
+   - Recommendation: {specific fix}
+
+Total issues: {N}
+Severity: {low/medium/high}
+```
+
+### Issue Severity
+
+| Severity | Description | Action |
+|----------|-------------|--------|
+| **Low** | Style issues, minor improvements | Can proceed, note for future |
+| **Medium** | Unclear tasks, questionable waves | Should fix before execution |
+| **High** | Missing coverage, wrong dependencies | Must fix before execution |
+
+### Common Plan Issues
+
+| Issue | Example | Fix |
+|-------|---------|-----|
+| Task too large | "Implement entire feature" | Split into 2-3 smaller tasks |
+| Task too small | "Add import statement" | Combine with related task |
+| Vague action | "Add error handling" | Specify which errors, how to handle |
+| Wave conflict | Tasks in Wave 0 both edit index.ts | Move one to Wave 1 |
+| Missing verification | No `verify` command | Add concrete test command |
+| Implementation-level truth | "Class exists" | Change to user outcome |
+| Pattern artifact | "src/**/*.ts" | List specific files |

@@ -8,18 +8,36 @@ allowed-tools: Read, Write, Glob, Grep, Bash, Task
 
 Generate PLAN.md files for a specific phase by invoking the Planner agent in PHASE-PLANNING mode. This command breaks a phase from ROADMAP.md into 2-3 executable PLAN.md files with concrete tasks.
 
+## Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  /ultraplan-plan-phase {N}                                   │
+│                                                              │
+│  1. RESEARCH — Phase 도메인 리서치                           │
+│  2. PLAN — PLAN.md 파일들 생성                               │
+│  3. RALPLAN — Architect + Critic 합의까지 검증               │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ## Usage
 
 ```
-/ultraplan:plan-phase {phase_number}
+/ultraplan:plan-phase {phase_number} [--skip-research] [--skip-verify]
 ```
 
 **Examples:**
 ```
-/ultraplan:plan-phase 1
-/ultraplan:plan-phase 02
-/ultraplan:plan-phase 3
+/ultraplan:plan-phase 1                          # Full flow (research + verify)
+/ultraplan:plan-phase 02                         # Same, padded phase number
+/ultraplan:plan-phase 3 --skip-research          # Skip research step
+/ultraplan:plan-phase 3 --skip-verify            # Skip Ralplan verification
+/ultraplan:plan-phase 3 --skip-research --skip-verify  # Fastest (plan only)
 ```
+
+**Flags:**
+- `--skip-research` — Skip the research phase (faster, less informed)
+- `--skip-verify` — Skip the Ralplan consensus loop (faster, less thorough)
 
 ## Behavior
 
@@ -48,7 +66,56 @@ grep -q "Phase ${phase_number}:" .planning/ROADMAP.md || echo "ERROR: Phase ${ph
 | Prior phases not planned | **Auto-proceed:** Warn but continue (unattended mode) |
 | All prerequisites met | Proceed to Step 2 |
 
-### Step 2: Load Phase Context
+### Step 2: Research Phase
+
+**Skip if `--skip-research` flag is set OR if RESEARCH.md already exists.**
+
+```bash
+# Check for existing research
+ls "${PHASE_DIR}"/*-RESEARCH.md 2>/dev/null
+```
+
+**If RESEARCH.md exists:** Display "Using existing research" and skip to Step 3.
+
+**If RESEARCH.md missing:**
+
+```javascript
+Task(
+  subagent_type="ultraplan-researcher",
+  model="opus",
+  prompt="""
+## Mode
+PHASE-RESEARCH (for phase planning)
+
+## Phase
+Phase ${phase_number}: ${PHASE_GOAL}
+
+## Phase Context from ROADMAP.md
+${PHASE_DESCRIPTION}
+
+## Success Criteria
+${SUCCESS_CRITERIA}
+
+## Instructions
+1. Investigate existing codebase for relevant patterns
+2. Research technologies/APIs needed for this phase
+3. Identify risks and unknowns
+4. Write findings to ${PHASE_DIR}/${phase_number}-RESEARCH.md
+
+## Output
+Return RESEARCH COMPLETE or RESEARCH BLOCKED
+"""
+)
+```
+
+**Handle Research Result:**
+
+| Result | Action |
+|--------|--------|
+| RESEARCH COMPLETE | Proceed to Step 3 |
+| RESEARCH BLOCKED | Show blockers, offer: 1) Provide info, 2) Skip research, 3) Abort |
+
+### Step 3: Load Phase Context
 
 Gather all context needed for planning this phase:
 
@@ -80,7 +147,7 @@ ls -la ${PHASE_DIR}/*.md 2>/dev/null
 | Dependencies | ROADMAP.md `Phase X: Depends on` | Check prerequisite phases |
 | Existing plans | `.ultraplan/plans/` directory | Avoid duplicate work |
 
-### Step 3: Spawn Planner Agent
+### Step 4: Spawn Planner Agent
 
 Invoke the ultraplan-planner agent in PHASE-PLANNING mode:
 
@@ -122,6 +189,9 @@ ${SUCCESS}
 
 ## Context from PROJECT.md
 ${PROJECT_CONTEXT}
+
+## Research Findings (if available)
+${RESEARCH_CONTENT}
 
 ## Output Location
 Write PLAN.md files to: ${PHASE_DIR}/
@@ -199,9 +269,189 @@ Begin planning now.
 
 These are executed in Step 2 before spawning the Planner agent (see Step 3 code block above).
 
-### Step 4: Display Summary
+### Step 5: Consensus Loop (Planner → Architect → Critic)
 
-After Planner agent completes, show summary to user:
+**Ralplan-style verification: Plans must satisfy ALL THREE agents before execution.**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    CONSENSUS LOOP                            │
+│                                                              │
+│   ┌─────────┐    ┌───────────┐    ┌────────┐                │
+│   │ Planner │───▶│ Architect │───▶│ Critic │                │
+│   └─────────┘    └───────────┘    └────────┘                │
+│        ▲                               │                     │
+│        │         NOT SATISFIED         │                     │
+│        └───────────────────────────────┘                     │
+│                                                              │
+│   Loop until: Architect APPROVED + Critic SATISFIED          │
+│   Max iterations: 5                                          │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Step 4a: Architect Review**
+
+```javascript
+Task(
+  subagent_type="ultraplan-architect",
+  model="opus",
+  prompt="""
+You are reviewing PLAN.md files for Phase ${phase_number}.
+
+## Mode
+PLAN-REVIEW (verify plans before execution)
+
+## Plans to Review
+${PLANS_CONTENT}
+
+## Phase Goal
+${PHASE_GOAL}
+
+## Success Criteria
+${SUCCESS}
+
+## Review Checklist
+
+### 1. Task Quality
+- [ ] Each task is 15-60 minutes
+- [ ] Imperative language ("Create X", "Implement Y")
+- [ ] Specific file paths, not patterns
+- [ ] Concrete, unambiguous action steps
+
+### 2. Wave Assignments
+- [ ] No file conflicts in same wave
+- [ ] Correct dependencies between waves
+
+### 3. must_haves
+- [ ] Derived from phase goal (goal-backward)
+- [ ] User-observable truths
+- [ ] Specific artifact paths
+- [ ] Critical integration key_links
+
+### 4. Completeness
+- [ ] All ROADMAP.md success criteria addressed
+- [ ] No implementation gaps
+
+## Output
+
+Return:
+- `## PLAN REVIEW: APPROVED` — pass to Critic
+- `## PLAN REVIEW: ISSUES FOUND` — back to Planner
+"""
+)
+```
+
+**Step 4b: Critic Review (only if Architect APPROVED)**
+
+```javascript
+Task(
+  subagent_type="ultraplan-critic",
+  model="opus",
+  prompt="""
+You are critiquing PLAN.md files for Phase ${phase_number}.
+
+## Mode
+PLAN-CRITIQUE (challenge assumptions, find risks)
+
+## Plans to Critique
+${PLANS_CONTENT}
+
+## Architect Assessment
+${ARCHITECT_RESULT}
+
+## Your Role
+Challenge what Architect might have missed:
+- Question assumptions
+- Identify risks and edge cases
+- Check feasibility of estimates
+- Find coverage gaps
+
+## Output
+
+Return:
+- `## CRITIC VERDICT: SATISFIED` — consensus reached, proceed to execution
+- `## CRITIC VERDICT: NOT SATISFIED` — back to Planner with concerns
+"""
+)
+```
+
+**Step 4c: Planner Revision (if Architect or Critic not satisfied)**
+
+```javascript
+Task(
+  subagent_type="ultraplan-planner",
+  model="opus",
+  prompt="""
+## Mode
+PLAN-REVISION (address feedback from Architect/Critic)
+
+## Current Plans
+${PLANS_CONTENT}
+
+## Feedback to Address
+
+### From Architect:
+${ARCHITECT_ISSUES}
+
+### From Critic:
+${CRITIC_CONCERNS}
+
+## Instructions
+1. Address each concern listed above
+2. Make targeted updates (don't rewrite from scratch)
+3. Respond to Critic's questions explicitly
+4. Update must_haves if needed
+
+Return revised PLAN.md files.
+"""
+)
+```
+
+**Consensus Loop Logic:**
+
+```python
+iteration = 0
+MAX_ITERATIONS = 5
+
+while iteration < MAX_ITERATIONS:
+    # Step 4a: Architect reviews
+    architect_result = spawn_architect_review()
+
+    if architect_result == "ISSUES FOUND":
+        iteration += 1
+        spawn_planner_revision(architect_issues)
+        continue  # Back to Architect
+
+    # Step 4b: Critic reviews (only if Architect approved)
+    critic_result = spawn_critic_review()
+
+    if critic_result == "SATISFIED":
+        # CONSENSUS REACHED!
+        proceed_to_step_5()
+        break
+
+    if critic_result == "NOT SATISFIED":
+        iteration += 1
+        spawn_planner_revision(critic_concerns)
+        continue  # Back to Architect → Critic
+
+# Max iterations reached
+if iteration >= MAX_ITERATIONS:
+    display_remaining_issues()
+    ask_user: "Force proceed or manual fix?"
+```
+
+**Consensus States:**
+
+| Architect | Critic | Result |
+|-----------|--------|--------|
+| APPROVED | SATISFIED | ✅ Consensus! Proceed to Step 5 |
+| APPROVED | NOT SATISFIED | ↩️ Back to Planner |
+| ISSUES FOUND | (not called) | ↩️ Back to Planner |
+
+### Step 6: Display Summary
+
+After consensus reached (Architect APPROVED + Critic SATISFIED), show summary:
 
 ```markdown
 Planning complete for Phase {phase_number}: {phase_name}
