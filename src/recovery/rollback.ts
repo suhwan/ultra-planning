@@ -14,7 +14,13 @@
  */
 
 import { StateManager, StateLocation, emitEvent } from '../state/index.js';
-import { getLatestCheckpoint, rollbackToCheckpoint } from '../state/checkpoint.js';
+import {
+  getLatestCheckpoint,
+  rollbackToCheckpoint,
+  listCheckpoints,
+  execGit,
+  isGitRepo,
+} from '../state/checkpoint.js';
 import { clearRalphLoopState } from '../loops/ralph/state.js';
 import {
   RecoveryState,
@@ -24,6 +30,7 @@ import {
   DEFAULT_MAX_RETRIES,
   RECOVERY_STATE_FILE,
 } from './types.js';
+import type { Checkpoint } from '../state/types.js';
 
 // ============================================================================
 // Default State
@@ -295,4 +302,283 @@ export function handleError(
     retryAfter: cooldownEnd,
     action,
   };
+}
+
+// ============================================================================
+// Advanced Rollback Functions
+// ============================================================================
+
+/** Options for selective rollback */
+export interface SelectiveRollbackOptions {
+  /** Whether to rollback state files (.ultraplan/state/) */
+  rollbackState: boolean;
+  /** Whether to rollback source code */
+  rollbackSource: boolean;
+  /** Specific files/patterns to rollback (if rollbackSource is true) */
+  sourcePatterns?: string[];
+  /** Files/patterns to exclude from rollback */
+  excludePatterns?: string[];
+  /** Dry run - show what would change without actually changing */
+  dryRun?: boolean;
+}
+
+/** Result of selective rollback */
+export interface SelectiveRollbackResult {
+  success: boolean;
+  stateFilesRolledBack?: number;
+  sourceFilesRolledBack?: number;
+  filesChanged?: string[];
+  error?: string;
+}
+
+/**
+ * Perform selective rollback to a checkpoint
+ *
+ * Allows fine-grained control over what gets rolled back:
+ * - State files only (safe, no source code changes)
+ * - Source files only (dangerous, use with caution)
+ * - Both state and source files
+ * - Specific file patterns
+ *
+ * @param checkpointId - Checkpoint ID to rollback to
+ * @param options - Rollback options
+ * @returns Detailed rollback result
+ */
+export function selectiveRollback(
+  checkpointId: string,
+  options: SelectiveRollbackOptions
+): SelectiveRollbackResult {
+  if (!isGitRepo()) {
+    return { success: false, error: 'Not a git repository' };
+  }
+
+  // Find checkpoint
+  const checkpoints = listCheckpoints();
+  const checkpoint = checkpoints.find(cp => cp.id === checkpointId);
+
+  if (!checkpoint) {
+    return { success: false, error: `Checkpoint not found: ${checkpointId}` };
+  }
+
+  const filesChanged: string[] = [];
+  let stateFilesRolledBack = 0;
+  let sourceFilesRolledBack = 0;
+
+  try {
+    // Rollback state files if requested
+    if (options.rollbackState) {
+      if (options.dryRun) {
+        // Show what would change
+        const diff = execGit(['diff', '--name-only', checkpoint.commitHash, '--', '.ultraplan/state/']);
+        if (diff) {
+          filesChanged.push(...diff.split('\n').filter(Boolean));
+          stateFilesRolledBack = filesChanged.length;
+        }
+      } else {
+        const result = rollbackToCheckpoint(checkpointId);
+        if (result.success) {
+          stateFilesRolledBack = result.filesRestored || 0;
+        }
+      }
+    }
+
+    // Rollback source files if requested
+    if (options.rollbackSource) {
+      const patterns = options.sourcePatterns || ['src/', 'lib/'];
+      const excludes = options.excludePatterns || ['.ultraplan/', 'node_modules/', '.git/'];
+
+      for (const pattern of patterns) {
+        // Skip excluded patterns
+        if (excludes.some(ex => pattern.startsWith(ex))) continue;
+
+        if (options.dryRun) {
+          try {
+            const diff = execGit(['diff', '--name-only', checkpoint.commitHash, '--', pattern]);
+            if (diff) {
+              const files = diff.split('\n').filter(Boolean);
+              filesChanged.push(...files);
+              sourceFilesRolledBack += files.length;
+            }
+          } catch {
+            // Pattern might not exist in checkpoint
+          }
+        } else {
+          try {
+            execGit(['checkout', checkpoint.commitHash, '--', pattern]);
+            // Count files changed
+            const diff = execGit(['diff', '--name-only', 'HEAD', checkpoint.commitHash, '--', pattern]);
+            if (diff) {
+              sourceFilesRolledBack += diff.split('\n').filter(Boolean).length;
+            }
+          } catch {
+            // Pattern might not exist in checkpoint
+          }
+        }
+      }
+    }
+
+    return {
+      success: true,
+      stateFilesRolledBack,
+      sourceFilesRolledBack,
+      filesChanged: options.dryRun ? filesChanged : undefined,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Preview what would be rolled back
+ *
+ * Shows files that differ between current state and checkpoint.
+ *
+ * @param checkpointId - Checkpoint ID
+ * @returns List of files that would change
+ */
+export function previewRollback(checkpointId: string): {
+  stateFiles: string[];
+  sourceFiles: string[];
+  error?: string;
+} {
+  if (!isGitRepo()) {
+    return { stateFiles: [], sourceFiles: [], error: 'Not a git repository' };
+  }
+
+  const checkpoints = listCheckpoints();
+  const checkpoint = checkpoints.find(cp => cp.id === checkpointId);
+
+  if (!checkpoint) {
+    return { stateFiles: [], sourceFiles: [], error: `Checkpoint not found: ${checkpointId}` };
+  }
+
+  try {
+    // Get state file changes
+    let stateFiles: string[] = [];
+    try {
+      const stateDiff = execGit(['diff', '--name-only', checkpoint.commitHash, '--', '.ultraplan/state/']);
+      stateFiles = stateDiff ? stateDiff.split('\n').filter(Boolean) : [];
+    } catch {
+      // No state changes
+    }
+
+    // Get source file changes
+    let sourceFiles: string[] = [];
+    try {
+      const sourceDiff = execGit(['diff', '--name-only', checkpoint.commitHash, '--', 'src/']);
+      sourceFiles = sourceDiff ? sourceDiff.split('\n').filter(Boolean) : [];
+    } catch {
+      // No source changes
+    }
+
+    return { stateFiles, sourceFiles };
+  } catch (error) {
+    return {
+      stateFiles: [],
+      sourceFiles: [],
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Rollback to a specific phase tag
+ *
+ * Rolls back to the commit marked with phase-N-complete tag.
+ *
+ * @param phaseNumber - Phase number to rollback to
+ * @param options - Rollback options
+ * @returns Rollback result
+ */
+export function rollbackToPhase(
+  phaseNumber: number,
+  options: Partial<SelectiveRollbackOptions> = {}
+): SelectiveRollbackResult {
+  const opts: SelectiveRollbackOptions = {
+    rollbackState: true,
+    rollbackSource: false,
+    ...options,
+  };
+  if (!isGitRepo()) {
+    return { success: false, error: 'Not a git repository' };
+  }
+
+  const tagName = `phase-${phaseNumber}-complete`;
+
+  try {
+    // Get commit for phase tag
+    const commitHash = execGit(['rev-parse', tagName]);
+
+    // Find checkpoint with this commit
+    const checkpoints = listCheckpoints();
+    const checkpoint = checkpoints.find(cp => cp.commitHash === commitHash);
+
+    if (checkpoint) {
+      return selectiveRollback(checkpoint.id, opts);
+    }
+
+    // No checkpoint, but tag exists - create a pseudo-rollback
+    if (opts.rollbackSource) {
+      const patterns = opts.sourcePatterns || ['src/'];
+      let sourceFilesRolledBack = 0;
+
+      for (const pattern of patterns) {
+        if (opts.dryRun) {
+          const diff = execGit(['diff', '--name-only', commitHash, '--', pattern]);
+          if (diff) {
+            sourceFilesRolledBack += diff.split('\n').filter(Boolean).length;
+          }
+        } else {
+          execGit(['checkout', commitHash, '--', pattern]);
+          const diff = execGit(['diff', '--name-only', 'HEAD', commitHash, '--', pattern]);
+          if (diff) {
+            sourceFilesRolledBack += diff.split('\n').filter(Boolean).length;
+          }
+        }
+      }
+
+      return { success: true, sourceFilesRolledBack };
+    }
+
+    return { success: true, stateFilesRolledBack: 0 };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Get available rollback targets
+ *
+ * Returns checkpoints and phase tags that can be rolled back to.
+ *
+ * @returns Available rollback targets
+ */
+export function getAvailableRollbackTargets(): {
+  checkpoints: Checkpoint[];
+  phaseTags: { tag: string; commit: string }[];
+} {
+  const checkpoints = isGitRepo() ? listCheckpoints() : [];
+
+  let phaseTags: { tag: string; commit: string }[] = [];
+  if (isGitRepo()) {
+    try {
+      const tags = execGit(['tag', '-l', 'phase-*-complete']);
+      if (tags) {
+        phaseTags = tags.split('\n').filter(Boolean).map(tag => ({
+          tag,
+          commit: execGit(['rev-parse', tag]),
+        }));
+      }
+    } catch {
+      // No tags
+    }
+  }
+
+  return { checkpoints, phaseTags };
 }

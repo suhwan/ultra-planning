@@ -16,3 +16,7 @@ export { ARCHITECT_PROMPT, getArchitectPrompt, ARCHITECT_CONFIG, ARCHITECT_SECTI
 
 // Re-export critic agent
 export { CRITIC_PROMPT, getCriticPrompt, CRITIC_CONFIG, CRITIC_SECTIONS } from './prompts/critic.js';
+
+// Re-export executor agent
+export { EXECUTOR_PROMPT, DEVIATION_SECTION, buildExecutorPrompt } from './prompts/executor.js';
+export type { ExecutorPromptOptions } from './prompts/executor.js';

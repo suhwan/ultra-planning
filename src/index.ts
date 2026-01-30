@@ -41,5 +41,8 @@ export * from './quality/index.js';
 // Notepad module (Phase 12: learning accumulation system)
 export * as notepad from './notepad/index.js';
 
+// Complexity module (v2.0: task complexity estimation)
+export * as complexity from './complexity/index.js';
+
 // Placeholder export to make the module valid
 export const VERSION = '0.1.0';

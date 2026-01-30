@@ -1,0 +1,123 @@
+# Architect Verdict Schema
+# Defines the verification output from Architect agent
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: ArchitectVerdict
+description: Verification result from Architect agent
+
+type: object
+required:
+  - verdict
+  - timestamp
+  - taskId
+  - checklist
+  - passPercentage
+
+properties:
+  verdict:
+    type: string
+    enum:
+      - APPROVED        # Task meets all criteria
+      - REJECTED        # Task fails critical criteria
+      - NEEDS_REVISION  # Minor issues, can proceed with fixes
+    description: Overall verification verdict
+
+  timestamp:
+    type: string
+    format: date-time
+    description: ISO 8601 verification timestamp
+
+  taskId:
+    type: string
+    description: Task that was verified
+
+  checklist:
+    type: object
+    required:
+      - codeCompiles
+      - testsPass
+      - requirementsMet
+      - noRegressions
+      - codeQuality
+    properties:
+      codeCompiles:
+        type: boolean
+        description: Code compiles without errors
+      testsPass:
+        type: boolean
+        description: All relevant tests pass
+      requirementsMet:
+        type: boolean
+        description: Task requirements are fulfilled
+      noRegressions:
+        type: boolean
+        description: No regression in existing functionality
+      codeQuality:
+        type: boolean
+        description: Code follows project standards
+    description: Verification checklist results
+
+  passPercentage:
+    type: number
+    minimum: 0
+    maximum: 100
+    description: Percentage of checklist items passed (80% = APPROVED)
+
+  issues:
+    type: array
+    items:
+      type: string
+    description: Issues found during verification
+
+  suggestions:
+    type: array
+    items:
+      type: string
+    description: Suggestions for improvement
+
+  evidence:
+    type: object
+    properties:
+      buildOutput:
+        type: string
+        description: Build command output
+      testOutput:
+        type: string
+        description: Test command output
+      filesReviewed:
+        type: array
+        items:
+          type: string
+        description: Files reviewed for code quality
+    description: Evidence supporting the verdict
+
+# Approval threshold
+x-approval-threshold: 80
+
+examples:
+  - verdict: APPROVED
+    timestamp: "2026-01-31T10:35:00Z"
+    taskId: "06-01-01"
+    checklist:
+      codeCompiles: true
+      testsPass: true
+      requirementsMet: true
+      noRegressions: true
+      codeQuality: true
+    passPercentage: 100
+    suggestions:
+      - "Consider adding JSDoc comments for public functions"
+
+  - verdict: REJECTED
+    timestamp: "2026-01-31T10:35:00Z"
+    taskId: "06-01-02"
+    checklist:
+      codeCompiles: true
+      testsPass: false
+      requirementsMet: true
+      noRegressions: false
+      codeQuality: true
+    passPercentage: 60
+    issues:
+      - "Test 'auth.test.ts' failing: expected 401, got 500"
+      - "Regression: login endpoint now requires extra parameter"

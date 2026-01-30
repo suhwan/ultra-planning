@@ -1,0 +1,148 @@
+# Learning Entry Schema
+# Defines entries for the LEARNINGS.md system
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: LearningEntry
+description: Entry for cross-task learning propagation
+
+type: object
+required:
+  - type
+  - taskId
+  - timestamp
+  - content
+
+properties:
+  type:
+    type: string
+    enum:
+      - AVOID      # What NOT to do
+      - PREFER     # What TO do instead
+      - GOTCHA     # Surprising behavior / edge case
+      - DISCOVERY  # New pattern or capability found
+    description: Learning category for filtering and prioritization
+
+  taskId:
+    type: string
+    description: Task where learning was discovered
+
+  timestamp:
+    type: string
+    format: date-time
+    description: ISO 8601 timestamp
+
+  content:
+    type: string
+    minLength: 20
+    maxLength: 500
+    description: The learning itself
+
+  pattern:
+    type: string
+    description: File:lines reference (e.g., "src/utils.ts:45-60")
+
+  tags:
+    type: array
+    items:
+      type: string
+      maxLength: 30
+    maxItems: 5
+    description: Tags for categorization and search
+
+  confidence:
+    type: string
+    enum:
+      - high       # Verified and tested
+      - medium     # Reasonably certain
+      - low        # Observed but not fully tested
+    default: medium
+    description: Confidence level in this learning
+
+  applicability:
+    type: string
+    enum:
+      - task       # Only applies to this task
+      - phase      # Applies to entire phase
+      - project    # Applies to entire project
+    default: phase
+    description: Scope of applicability
+
+  relatedLearnings:
+    type: array
+    items:
+      type: string
+    description: IDs of related learning entries
+
+# Type definitions for prompt injection
+x-type-definitions:
+  AVOID:
+    emoji: "⚠️"
+    priority: high
+    description: |
+      Anti-patterns or approaches that caused problems.
+      Inject early in prompts to prevent repeating mistakes.
+
+  PREFER:
+    emoji: "✅"
+    priority: high
+    description: |
+      Recommended approaches that worked well.
+      Inject as positive guidance.
+
+  GOTCHA:
+    emoji: "💡"
+    priority: medium
+    description: |
+      Surprising behaviors or edge cases discovered.
+      Inject when related context is active.
+
+  DISCOVERY:
+    emoji: "🔍"
+    priority: low
+    description: |
+      New patterns or capabilities found.
+      Inject opportunistically.
+
+examples:
+  - type: AVOID
+    taskId: "06-01-02"
+    timestamp: "2026-01-31T10:30:00Z"
+    content: |
+      Do NOT use synchronous file operations in the API handlers.
+      This caused blocking issues under load. Use async/await with
+      fs.promises instead.
+    pattern: "src/api/handlers.ts:45-60"
+    tags: ["performance", "async", "file-io"]
+    confidence: high
+    applicability: project
+
+  - type: PREFER
+    taskId: "06-01-03"
+    timestamp: "2026-01-31T11:00:00Z"
+    content: |
+      PREFER using zod schemas for request validation over manual checks.
+      Provides better type inference and cleaner error messages.
+    tags: ["validation", "zod", "typescript"]
+    confidence: high
+    applicability: project
+
+  - type: GOTCHA
+    taskId: "06-01-04"
+    timestamp: "2026-01-31T11:30:00Z"
+    content: |
+      The JWT library silently ignores invalid algorithms if not
+      explicitly specified. Always set algorithms: ['HS256'] explicitly.
+    pattern: "src/auth/jwt.ts:12"
+    tags: ["security", "jwt", "auth"]
+    confidence: high
+    applicability: project
+
+  - type: DISCOVERY
+    taskId: "06-01-05"
+    timestamp: "2026-01-31T12:00:00Z"
+    content: |
+      Found that drizzle-orm supports batch inserts with returning().
+      This can be used for bulk user imports with IDs.
+    tags: ["database", "drizzle", "performance"]
+    confidence: medium
+    applicability: phase

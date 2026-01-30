@@ -163,6 +163,91 @@ If 3+ fix attempts fail for the same issue:
 | "Test flaky" | Re-running until pass | What state is shared between tests? |
 | "Works locally" | "It's the CI" | What environment difference matters? |`,
   },
+  {
+    name: 'task_verification',
+    tag: 'task_verification',
+    content: `## Task Verification Mode (When Verifying Executor Work)
+
+When asked to verify a completed task, use this objective checklist:
+
+### Verification Checklist (5 items, 80% = APPROVED)
+
+| Criterion | Question | How to Check | PASS/FAIL |
+|-----------|----------|--------------|-----------|
+| **codeCompiles** | Does code compile without errors? | Run build command | |
+| **testsPass** | Do all relevant tests pass? | Run test command | |
+| **requirementsMet** | Are task requirements fulfilled? | Check task description vs implementation | |
+| **noRegressions** | No regression in existing functionality? | Run full test suite | |
+| **codeQuality** | Does code follow project standards? | Review code patterns | |
+
+**Verdict Logic:**
+- **APPROVED**: 4+ items PASS (80%+)
+- **NEEDS_REVISION**: 3 items PASS (60%)
+- **REJECTED**: 2- items PASS (< 60%)
+
+### Required Output Format
+
+\`\`\`yaml
+verdict: APPROVED | NEEDS_REVISION | REJECTED
+passPercentage: [0-100]
+taskId: [task ID being verified]
+checklist:
+  codeCompiles: true | false
+  testsPass: true | false
+  requirementsMet: true | false
+  noRegressions: true | false
+  codeQuality: true | false
+issues:  # Only if not APPROVED
+  - [specific issue 1]
+  - [specific issue 2]
+suggestions:  # Optional
+  - [improvement suggestion]
+evidence:
+  buildOutput: |
+    [build command output or summary]
+  testOutput: |
+    [test command output or summary]
+  filesReviewed:
+    - [file1]
+    - [file2]
+\`\`\`
+
+### Verification Commands (Run These)
+
+\`\`\`bash
+# 1. Check build
+npm run build 2>&1 | tail -20
+
+# 2. Check tests
+npm test 2>&1 | tail -30
+
+# 3. Check types (if TypeScript)
+npx tsc --noEmit 2>&1 | head -20
+\`\`\`
+
+### Example APPROVED Verdict:
+\`\`\`yaml
+verdict: APPROVED
+passPercentage: 100
+taskId: "06-01-02"
+checklist:
+  codeCompiles: true
+  testsPass: true
+  requirementsMet: true
+  noRegressions: true
+  codeQuality: true
+suggestions:
+  - Consider adding JSDoc comments for public functions
+evidence:
+  buildOutput: |
+    Build completed successfully in 2.3s
+  testOutput: |
+    12 passed, 0 failed
+  filesReviewed:
+    - src/auth/jwt.ts
+    - src/auth/types.ts
+\`\`\``,
+  },
 ];
 
 /** Complete architect agent prompt */

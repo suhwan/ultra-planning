@@ -1,0 +1,66 @@
+# Task Complexity Schema
+# Defines complexity metadata for task routing and model selection
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: TaskComplexity
+description: Complexity metadata for intelligent task routing
+
+type: object
+required:
+  - level
+
+properties:
+  level:
+    type: integer
+    minimum: 1
+    maximum: 5
+    description: |
+      Complexity level (1-5):
+      1 = Trivial (lookups, simple edits) → haiku
+      2 = Simple (straightforward implementations) → haiku
+      3 = Standard (typical features) → sonnet
+      4 = Complex (multi-file changes) → sonnet
+      5 = Very Complex (architectural changes) → opus
+
+  estimatedMinutes:
+    type: integer
+    minimum: 1
+    maximum: 480
+    description: Estimated effort in minutes
+
+  category:
+    type: string
+    enum:
+      - quick        # < 5 minutes
+      - standard     # 5-30 minutes
+      - complex      # 30-120 minutes
+      - architectural # > 120 minutes
+    description: High-level category for human readability
+
+  rationale:
+    type: string
+    maxLength: 500
+    description: Reasoning for complexity assignment
+
+# Model mapping (for reference)
+x-model-mapping:
+  1: haiku
+  2: haiku
+  3: sonnet
+  4: sonnet
+  5: opus
+
+examples:
+  - level: 1
+    category: quick
+    rationale: "Simple string replacement in config file"
+
+  - level: 3
+    estimatedMinutes: 30
+    category: standard
+    rationale: "Add validation to existing API endpoint"
+
+  - level: 5
+    estimatedMinutes: 120
+    category: architectural
+    rationale: "Refactor authentication system to use JWT"

@@ -5,7 +5,7 @@
  * after max iterations.
  */
 
-import type { RalplanState, RalplanPhase, CriticVerdict } from './types.js';
+import type { RalplanState, RalplanPhase, RalplanCriticVerdict } from './types.js';
 import { getRalplanState, advanceIteration } from './state.js';
 
 /**
@@ -36,7 +36,7 @@ export function shouldForceApproval(state: RalplanState): boolean {
  */
 export function getNextPhase(
   currentPhase: RalplanPhase,
-  verdict?: CriticVerdict
+  verdict?: RalplanCriticVerdict
 ): RalplanPhase {
   switch (currentPhase) {
     case 'planner_planning':
@@ -94,7 +94,7 @@ export interface VerdictHandlingResult {
  * @returns Result with next phase, forced flag, and message
  */
 export function handleCriticVerdict(
-  verdict: CriticVerdict,
+  verdict: RalplanCriticVerdict,
   feedback?: string
 ): VerdictHandlingResult {
   const state = getRalplanState();

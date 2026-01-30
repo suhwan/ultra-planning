@@ -39,6 +39,7 @@
 // Types
 export {
   NotepadCategory,
+  LearningType,
   NotepadEntry,
   LearningEntry,
   DecisionEntry,

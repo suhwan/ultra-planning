@@ -20,3 +20,6 @@ export * from './mode-registry.js';
 
 // Checkpoint manager (Wave 2 - Plan 02-04)
 export * from './checkpoint.js';
+
+// Session isolation (v2.0 - Phase 2.4)
+export * from './session/index.js';

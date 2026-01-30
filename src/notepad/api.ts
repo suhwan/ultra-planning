@@ -91,6 +91,8 @@ export function addLearning(
   const timestamp = new Date().toISOString();
   const markdown = formatEntry(timestamp, entry.taskId, entry.content, {
     'Pattern found': entry.pattern,
+    'Learning type': entry.learningType,
+    Priority: entry.priority,
     Tags: entry.tags,
   });
 
@@ -224,6 +226,8 @@ export function addProjectLearning(
   const timestamp = new Date().toISOString();
   const markdown = formatEntry(timestamp, entry.taskId, entry.content, {
     'Pattern found': entry.pattern,
+    'Learning type': entry.learningType,
+    Priority: entry.priority,
     Tags: entry.tags,
   });
 

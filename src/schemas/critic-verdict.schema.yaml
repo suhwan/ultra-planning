@@ -1,0 +1,131 @@
+# Critic Verdict Schema
+# Defines the plan review output from Critic agent
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: CriticVerdict
+description: Plan review result from Critic agent
+
+type: object
+required:
+  - verdict
+  - timestamp
+  - planPath
+  - checklist
+  - passPercentage
+  - justification
+
+properties:
+  verdict:
+    type: string
+    enum:
+      - OKAY    # Plan is approved
+      - REJECT  # Plan needs revision
+    description: Overall review verdict
+
+  timestamp:
+    type: string
+    format: date-time
+    description: ISO 8601 review timestamp
+
+  planPath:
+    type: string
+    description: Path to the plan file reviewed
+
+  iteration:
+    type: integer
+    minimum: 1
+    maximum: 5
+    description: Current Ralplan iteration number
+
+  checklist:
+    type: object
+    required:
+      - goalsAligned
+      - tasksAtomic
+      - dependenciesClear
+      - verifiable
+      - waveStructure
+    properties:
+      goalsAligned:
+        type: boolean
+        description: Tasks align with phase/project goals
+      tasksAtomic:
+        type: boolean
+        description: Each task is atomic (single commit worthy)
+      dependenciesClear:
+        type: boolean
+        description: Task dependencies are explicit and correct
+      verifiable:
+        type: boolean
+        description: Each task has clear "done" criteria
+      waveStructure:
+        type: boolean
+        description: Wave assignments enable parallel execution
+    description: Review checklist results
+
+  passPercentage:
+    type: number
+    minimum: 0
+    maximum: 100
+    description: Percentage of checklist items passed (80% = OKAY)
+
+  justification:
+    type: string
+    minLength: 50
+    maxLength: 1000
+    description: Reasoning for the verdict
+
+  improvements:
+    type: array
+    items:
+      type: string
+    description: Specific improvements needed (if REJECT)
+
+  strengths:
+    type: array
+    items:
+      type: string
+    description: Positive aspects of the plan
+
+# Approval threshold
+x-approval-threshold: 80
+
+examples:
+  - verdict: OKAY
+    timestamp: "2026-01-31T10:20:00Z"
+    planPath: ".planning/phases/06/01-PLAN.md"
+    iteration: 1
+    checklist:
+      goalsAligned: true
+      tasksAtomic: true
+      dependenciesClear: true
+      verifiable: true
+      waveStructure: true
+    passPercentage: 100
+    justification: |
+      Plan is well-structured with clear atomic tasks. Wave assignments
+      allow for 3-way parallelization in Wave 1. All tasks have explicit
+      verification criteria.
+    strengths:
+      - "Good task granularity (2-3 tasks per feature)"
+      - "Clear dependency chain"
+
+  - verdict: REJECT
+    timestamp: "2026-01-31T10:20:00Z"
+    planPath: ".planning/phases/06/01-PLAN.md"
+    iteration: 1
+    checklist:
+      goalsAligned: true
+      tasksAtomic: false
+      dependenciesClear: true
+      verifiable: false
+      waveStructure: true
+    passPercentage: 60
+    justification: |
+      Task 3 combines multiple concerns (database schema + API endpoint).
+      Tasks 2 and 4 lack clear verification criteria - "implement feature"
+      is not verifiable without specific acceptance tests.
+    improvements:
+      - "Split Task 3 into 'Create user table schema' and 'Add user API endpoint'"
+      - "Add verification criteria to Task 2: 'Unit tests pass for validation logic'"
+      - "Add verification criteria to Task 4: 'Integration test confirms data flow'"

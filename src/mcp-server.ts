@@ -35,6 +35,139 @@ import {
 } from './notepad/index.js';
 import { estimateTokens } from './context/estimator.js';
 
+// Import complexity functions
+import {
+  estimateComplexity,
+  getModelForComplexity,
+  batchEstimate,
+  COMPLEXITY_MODEL_MAP,
+  COMPLEXITY_DESCRIPTIONS,
+} from './complexity/index.js';
+
+// Import verdict functions
+import {
+  createArchitectVerdict,
+  createCriticVerdict,
+  calculateArchitectPassPercentage,
+  calculateCriticPassPercentage,
+  APPROVAL_THRESHOLD,
+  formatChecklist,
+  ARCHITECT_ITEM_NAMES,
+  CRITIC_ITEM_NAMES,
+} from './orchestration/verdicts/index.js';
+
+// Import session functions
+import {
+  getSessionManager,
+  createSession,
+  getSession,
+  DEFAULT_SESSION_RULES,
+} from './state/session/index.js';
+
+// Import revision functions
+import {
+  flagPlanForRevision,
+  clearRevisionFlag,
+  checkRevisionNeeded,
+  createPlanVersion,
+  getPlanVersionHistory,
+  getCurrentPlanVersion,
+  requestPlanRevision,
+  completePlanRevision,
+} from './orchestration/revision/index.js';
+
+// Import deviation functions
+import {
+  reportDeviation,
+  getDeviations,
+  getDeviationsByLevel,
+  getPendingApprovals,
+  getDeviationStats,
+  submitArchitectVerdict,
+  resolveDeviation,
+  determineDeviationLevel,
+  hasUnresolvedLevel3,
+} from './orchestration/deviation/index.js';
+
+// Import spike functions
+import {
+  createSpike,
+  startSpike,
+  completeSpike,
+  skipSpike,
+  getSpikes,
+  getSpike,
+  getPendingSpikes,
+  getSpikeForTask,
+  getSpikeStats,
+  hasPendingSpikes,
+  assessUncertainty,
+  needsSpike,
+  autoCreateSpikeIfNeeded,
+} from './orchestration/spike/index.js';
+
+// Import checkpoint and rollback functions
+import {
+  tagPhaseComplete,
+  listPhaseTags,
+  getPhaseTagCommit,
+  completePhase,
+  listCheckpoints,
+} from './state/checkpoint.js';
+
+import {
+  selectiveRollback,
+  previewRollback,
+  rollbackToPhase,
+  getAvailableRollbackTargets,
+} from './recovery/rollback.js';
+
+// Import swarm functions
+import {
+  initializeSwarm,
+  getAvailableTasks,
+  claimTask,
+  claimAnyTask,
+  completeTask,
+  releaseTask,
+  getSwarmStatus,
+  getSwarmState,
+  startSwarm,
+  pauseSwarm,
+  cleanupStaleWorkers,
+  generateWorkerPrompt,
+  generateOrchestratorPrompt,
+} from './orchestration/swarm/index.js';
+
+// Import pipeline functions
+import {
+  createPipelineFromPreset,
+  createCustomPipeline,
+  parsePipelineString,
+  initializePipeline,
+  buildStagePrompt,
+  recordStageResult,
+  getCurrentStage,
+  startPipeline,
+  pausePipeline,
+  getPipelineStatus,
+  getPipelineState,
+  listPresets as listPipelinePresets,
+  generatePipelineOrchestratorPrompt,
+} from './orchestration/pipeline/index.js';
+
+// Import delegation functions
+import {
+  detectCategory,
+  routeTask,
+  routeByComplexity,
+  listCategories,
+  getModelForCategory,
+  needsHighTierModel,
+  generateExecutorLoopPrompt,
+  generateHeartbeatProtocol,
+} from './orchestration/delegation/index.js';
+
 // ============================================================================
 // Server Setup
 // ============================================================================
@@ -186,6 +319,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             pattern: {
               type: 'string',
               description: 'Optional file:lines reference (e.g., "src/utils.ts:45-60")',
+            },
+            learningType: {
+              type: 'string',
+              enum: ['pattern', 'convention', 'gotcha', 'discovery', 'avoid', 'prefer'],
+              description: 'Learning type: pattern (reusable), convention (project style), gotcha (non-obvious), discovery (new info), avoid (anti-pattern), prefer (recommended approach)',
+            },
+            priority: {
+              type: 'number',
+              description: 'Priority 1-5 (higher = more important)',
             },
             tags: {
               type: 'array',
@@ -347,6 +489,831 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ['planId'],
         },
       },
+
+      // === Complexity Estimation ===
+      {
+        name: 'estimate_task_complexity',
+        description: 'Estimate complexity for a task. Returns level (1-5), recommended model, and reasoning.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: {
+              type: 'string',
+              description: 'Task description/action to estimate',
+            },
+            files: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Optional list of files to be modified',
+            },
+            dependencies: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Optional list of task dependencies',
+            },
+          },
+          required: ['taskDescription'],
+        },
+      },
+      {
+        name: 'get_model_for_complexity',
+        description: 'Get recommended model (haiku/sonnet/opus) for a complexity level.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            level: {
+              type: 'number',
+              description: 'Complexity level (1-5)',
+            },
+          },
+          required: ['level'],
+        },
+      },
+      {
+        name: 'batch_estimate_complexity',
+        description: 'Estimate complexity for multiple tasks at once.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            tasks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  action: { type: 'string' },
+                  files: { type: 'array', items: { type: 'string' } },
+                },
+              },
+              description: 'Array of tasks with name, action, and optional files',
+            },
+          },
+          required: ['tasks'],
+        },
+      },
+
+      // === Verdict Evaluation ===
+      {
+        name: 'evaluate_architect_checklist',
+        description: 'Evaluate Architect checklist and determine verdict (APPROVED/REJECTED/NEEDS_REVISION). 80% pass = APPROVED.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskId: { type: 'string', description: 'Task ID being verified' },
+            checklist: {
+              type: 'object',
+              properties: {
+                codeCompiles: { type: 'boolean' },
+                testsPass: { type: 'boolean' },
+                requirementsMet: { type: 'boolean' },
+                noRegressions: { type: 'boolean' },
+                codeQuality: { type: 'boolean' },
+              },
+              description: 'Checklist results',
+            },
+            issues: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Optional issues found',
+            },
+            suggestions: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Optional suggestions',
+            },
+          },
+          required: ['taskId', 'checklist'],
+        },
+      },
+      {
+        name: 'evaluate_critic_checklist',
+        description: 'Evaluate Critic checklist and determine verdict (OKAY/REJECT). 80% pass = OKAY.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan being reviewed' },
+            checklist: {
+              type: 'object',
+              properties: {
+                goalsAligned: { type: 'boolean' },
+                tasksAtomic: { type: 'boolean' },
+                dependenciesClear: { type: 'boolean' },
+                verifiable: { type: 'boolean' },
+                waveStructure: { type: 'boolean' },
+              },
+              description: 'Checklist results',
+            },
+            justification: { type: 'string', description: 'Reasoning for verdict' },
+            iteration: { type: 'number', description: 'Optional Ralplan iteration number' },
+            improvements: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Optional improvements needed',
+            },
+          },
+          required: ['planPath', 'checklist', 'justification'],
+        },
+      },
+      {
+        name: 'get_approval_threshold',
+        description: 'Get the approval threshold percentage for verdicts.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+
+      // === Session Management ===
+      {
+        name: 'create_session',
+        description: 'Create a new isolated session for agent execution.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            name: { type: 'string', description: 'Human-readable session name' },
+            parentSessionId: { type: 'string', description: 'Parent session ID for nested sessions' },
+            mode: { type: 'string', description: 'Execution mode' },
+            agentRole: { type: 'string', description: 'Agent role (planner, executor, architect, critic)' },
+            activePlan: { type: 'string', description: 'Path to active plan' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'get_session',
+        description: 'Get session state by ID.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'list_sessions',
+        description: 'List all active sessions.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'claim_task_for_session',
+        description: 'Claim a task for a session (prevents other sessions from claiming).',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Session ID' },
+            taskId: { type: 'string', description: 'Task ID to claim' },
+          },
+          required: ['sessionId', 'taskId'],
+        },
+      },
+      {
+        name: 'complete_session',
+        description: 'Mark a session as complete with results.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Session ID' },
+            status: { type: 'string', enum: ['success', 'failed', 'timeout', 'cancelled'] },
+            verdict: { type: 'object', description: 'Optional verdict object' },
+            learnings: { type: 'array', items: { type: 'string' }, description: 'Optional learnings' },
+            error: { type: 'string', description: 'Error message if failed' },
+          },
+          required: ['sessionId', 'status'],
+        },
+      },
+
+      // === Plan Revision ===
+      {
+        name: 'flag_plan_for_revision',
+        description: 'Flag a plan as needing revision.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+            reason: {
+              type: 'string',
+              enum: ['deviation_level_3', 'spike_discovery', 'blocker_found', 'scope_change', 'dependency_discovered', 'manual_request'],
+              description: 'Reason for revision',
+            },
+            description: { type: 'string', description: 'Description of needed changes' },
+            affectedTasks: { type: 'array', items: { type: 'string' }, description: 'Tasks affected' },
+            source: { type: 'string', description: 'Source of request' },
+          },
+          required: ['planPath', 'reason', 'description'],
+        },
+      },
+      {
+        name: 'check_revision_needed',
+        description: 'Check if a plan needs revision.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['planPath'],
+        },
+      },
+      {
+        name: 'complete_plan_revision',
+        description: 'Complete a plan revision after Planner has modified it.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+            changeDescription: { type: 'string', description: 'Summary of changes made' },
+            tasksAdded: { type: 'array', items: { type: 'string' }, description: 'Tasks added' },
+            tasksRemoved: { type: 'array', items: { type: 'string' }, description: 'Tasks removed' },
+            tasksModified: { type: 'array', items: { type: 'string' }, description: 'Tasks modified' },
+          },
+          required: ['planPath', 'changeDescription'],
+        },
+      },
+      {
+        name: 'get_plan_version_history',
+        description: 'Get version history for a plan.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['planPath'],
+        },
+      },
+
+      // === Deviation Management ===
+      {
+        name: 'report_deviation',
+        description: 'Report an executor deviation from plan. Auto-determines level (1-3) based on type and severity.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+            taskId: { type: 'string', description: 'Task ID that deviated' },
+            type: {
+              type: 'string',
+              enum: ['file_addition', 'file_modification', 'approach_change', 'dependency_addition', 'scope_expansion', 'scope_reduction', 'blocker_workaround', 'performance_tradeoff', 'other'],
+              description: 'Type of deviation',
+            },
+            description: { type: 'string', description: 'What was different' },
+            planned: { type: 'string', description: 'What was planned' },
+            actual: { type: 'string', description: 'What actually happened' },
+            reason: { type: 'string', description: 'Why deviation was necessary' },
+            affectedFiles: { type: 'array', items: { type: 'string' }, description: 'Files affected' },
+            impact: { type: 'string', description: 'Impact assessment' },
+            level: { type: 'number', description: 'Override auto-determined level (1-3)' },
+          },
+          required: ['planPath', 'taskId', 'type', 'description', 'planned', 'actual', 'reason'],
+        },
+      },
+      {
+        name: 'get_deviations',
+        description: 'Get all deviations for a plan.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+            level: { type: 'number', description: 'Filter by level (1-3)' },
+          },
+          required: ['planPath'],
+        },
+      },
+      {
+        name: 'get_pending_approvals',
+        description: 'Get Level 2 deviations pending Architect approval.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['planPath'],
+        },
+      },
+      {
+        name: 'submit_deviation_verdict',
+        description: 'Submit Architect verdict for a Level 2 deviation.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+            deviationId: { type: 'string', description: 'Deviation ID' },
+            approved: { type: 'boolean', description: 'Whether approved' },
+            reasoning: { type: 'string', description: 'Reasoning for verdict' },
+            conditions: { type: 'array', items: { type: 'string' }, description: 'Conditions if approved' },
+          },
+          required: ['planPath', 'deviationId', 'approved', 'reasoning'],
+        },
+      },
+      {
+        name: 'get_deviation_stats',
+        description: 'Get deviation statistics for a plan.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['planPath'],
+        },
+      },
+      {
+        name: 'has_unresolved_level3',
+        description: 'Check if plan has unresolved Level 3 deviations (blocks execution).',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['planPath'],
+        },
+      },
+
+      // === Spike Management ===
+      {
+        name: 'create_spike',
+        description: 'Create a spike task for high-uncertainty work. Spikes are time-boxed explorations before main task.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+            originalTaskId: { type: 'string', description: 'Task ID this spike is for' },
+            objective: { type: 'string', description: 'What question to answer' },
+            questions: { type: 'array', items: { type: 'string' }, description: 'Questions to answer during spike' },
+            category: {
+              type: 'string',
+              enum: ['technical', 'integration', 'performance', 'feasibility', 'dependency', 'api', 'data', 'scope'],
+              description: 'Uncertainty category',
+            },
+            uncertaintyLevel: { type: 'number', description: 'Uncertainty level (0-10)' },
+            timeBoxMinutes: { type: 'number', description: 'Time limit in minutes (default: 30)' },
+          },
+          required: ['planPath', 'originalTaskId', 'objective', 'questions'],
+        },
+      },
+      {
+        name: 'assess_uncertainty',
+        description: 'Assess task uncertainty based on description and context.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: { type: 'string', description: 'Task description to assess' },
+            isNewTechnology: { type: 'boolean', description: 'Using unfamiliar technology' },
+            hasExternalDependency: { type: 'boolean', description: 'Has external dependency' },
+            isPerformanceCritical: { type: 'boolean', description: 'Performance is critical' },
+            hasUnknownScope: { type: 'boolean', description: 'Scope is unclear' },
+            requiresResearch: { type: 'boolean', description: 'Research needed' },
+          },
+          required: ['taskDescription'],
+        },
+      },
+      {
+        name: 'complete_spike',
+        description: 'Complete a spike with findings and recommendations.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+            spikeId: { type: 'string', description: 'Spike ID' },
+            success: { type: 'boolean', description: 'Whether spike was successful' },
+            findings: { type: 'array', items: { type: 'string' }, description: 'Key findings' },
+            recommendedApproach: { type: 'string', description: 'Recommended approach based on spike' },
+            proceedWithTask: { type: 'boolean', description: 'Should original task proceed' },
+            timeSpentMinutes: { type: 'number', description: 'Time spent on spike' },
+            planModifications: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', enum: ['add_task', 'remove_task', 'modify_task', 'add_dependency', 'change_approach'] },
+                  description: { type: 'string' },
+                  rationale: { type: 'string' },
+                },
+              },
+              description: 'Suggested plan modifications',
+            },
+          },
+          required: ['planPath', 'spikeId', 'success', 'findings', 'proceedWithTask', 'timeSpentMinutes'],
+        },
+      },
+      {
+        name: 'get_pending_spikes',
+        description: 'Get pending spikes for a plan.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['planPath'],
+        },
+      },
+      {
+        name: 'get_spike_stats',
+        description: 'Get spike statistics for a plan.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['planPath'],
+        },
+      },
+
+      // === Phase Completion & Tagging ===
+      {
+        name: 'complete_phase',
+        description: 'Mark a phase as complete with checkpoint and git tag.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            phaseNumber: { type: 'number', description: 'Phase number' },
+            phaseName: { type: 'string', description: 'Phase name/description' },
+          },
+          required: ['phaseNumber', 'phaseName'],
+        },
+      },
+      {
+        name: 'list_phase_tags',
+        description: 'List all phase completion tags.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+
+      // === Advanced Rollback ===
+      {
+        name: 'preview_rollback',
+        description: 'Preview what files would change if rolling back to a checkpoint.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            checkpointId: { type: 'string', description: 'Checkpoint ID' },
+          },
+          required: ['checkpointId'],
+        },
+      },
+      {
+        name: 'selective_rollback',
+        description: 'Perform selective rollback with fine-grained control over what gets rolled back.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            checkpointId: { type: 'string', description: 'Checkpoint ID' },
+            rollbackState: { type: 'boolean', description: 'Rollback state files (default: true)' },
+            rollbackSource: { type: 'boolean', description: 'Rollback source files (default: false)' },
+            sourcePatterns: { type: 'array', items: { type: 'string' }, description: 'Source patterns to rollback' },
+            dryRun: { type: 'boolean', description: 'Preview without making changes' },
+          },
+          required: ['checkpointId'],
+        },
+      },
+      {
+        name: 'rollback_to_phase',
+        description: 'Rollback to a specific phase completion point.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            phaseNumber: { type: 'number', description: 'Phase number to rollback to' },
+            rollbackSource: { type: 'boolean', description: 'Also rollback source files (default: false)' },
+            dryRun: { type: 'boolean', description: 'Preview without making changes' },
+          },
+          required: ['phaseNumber'],
+        },
+      },
+      {
+        name: 'get_rollback_targets',
+        description: 'Get available checkpoints and phase tags for rollback.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+
+      // === Swarm Management ===
+      {
+        name: 'initialize_swarm',
+        description: 'Initialize a swarm of parallel workers from a plan. Returns session ID and worker info.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to PLAN.md file' },
+            maxWorkers: { type: 'number', description: 'Maximum workers (default: 5)' },
+            claimRetries: { type: 'number', description: 'Retries on claim failure (default: 3)' },
+            workerTimeoutMs: { type: 'number', description: 'Worker timeout in ms (default: 300000)' },
+          },
+          required: ['planPath'],
+        },
+      },
+      {
+        name: 'get_swarm_available_tasks',
+        description: 'Get tasks available for claiming in a swarm.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'claim_swarm_task',
+        description: 'Claim a task for a worker. Returns null if task already claimed (race condition).',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+            workerId: { type: 'string', description: 'Worker ID' },
+            taskId: { type: 'string', description: 'Task ID to claim' },
+          },
+          required: ['sessionId', 'workerId', 'taskId'],
+        },
+      },
+      {
+        name: 'claim_any_swarm_task',
+        description: 'Claim any available task for a worker.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+            workerId: { type: 'string', description: 'Worker ID' },
+          },
+          required: ['sessionId', 'workerId'],
+        },
+      },
+      {
+        name: 'complete_swarm_task',
+        description: 'Mark a swarm task as completed or failed.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+            workerId: { type: 'string', description: 'Worker ID' },
+            taskId: { type: 'string', description: 'Task ID' },
+            success: { type: 'boolean', description: 'Whether task succeeded' },
+            output: { type: 'string', description: 'Task output/summary' },
+            filesModified: { type: 'array', items: { type: 'string' }, description: 'Files modified' },
+            error: { type: 'string', description: 'Error if failed' },
+          },
+          required: ['sessionId', 'workerId', 'taskId', 'success'],
+        },
+      },
+      {
+        name: 'get_swarm_status',
+        description: 'Get swarm status and statistics.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'start_swarm',
+        description: 'Start swarm execution.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'cleanup_stale_workers',
+        description: 'Release tasks from timed-out workers.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'generate_worker_prompt',
+        description: 'Generate prompt for a swarm worker agent.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+            workerId: { type: 'string', description: 'Worker ID' },
+            workerName: { type: 'string', description: 'Worker name' },
+            planPath: { type: 'string', description: 'Path to plan' },
+            learnings: { type: 'string', description: 'Relevant learnings to inject' },
+            context: { type: 'string', description: 'Additional context' },
+          },
+          required: ['sessionId', 'workerId', 'workerName', 'planPath'],
+        },
+      },
+      {
+        name: 'generate_swarm_orchestrator_prompt',
+        description: 'Generate prompt for the swarm orchestrator.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to plan' },
+            sessionId: { type: 'string', description: 'Swarm session ID' },
+            workerCount: { type: 'number', description: 'Number of workers' },
+          },
+          required: ['planPath', 'sessionId', 'workerCount'],
+        },
+      },
+
+      // === Pipeline Management ===
+      {
+        name: 'create_pipeline_preset',
+        description: 'Create a pipeline from a built-in preset (review, implement, debug, research, refactor, security).',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            preset: {
+              type: 'string',
+              enum: ['review', 'implement', 'debug', 'research', 'refactor', 'security'],
+              description: 'Preset name',
+            },
+            initialInput: { type: 'string', description: 'Initial input for first stage' },
+          },
+          required: ['preset'],
+        },
+      },
+      {
+        name: 'parse_pipeline_string',
+        description: 'Parse a pipeline definition string like "explore:haiku -> architect:opus -> executor:sonnet".',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            pipelineStr: { type: 'string', description: 'Pipeline definition string' },
+            name: { type: 'string', description: 'Pipeline name' },
+          },
+          required: ['pipelineStr'],
+        },
+      },
+      {
+        name: 'initialize_pipeline',
+        description: 'Initialize a pipeline for execution. Returns session ID.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            preset: {
+              type: 'string',
+              enum: ['review', 'implement', 'debug', 'research', 'refactor', 'security'],
+              description: 'Use a preset pipeline',
+            },
+            pipelineStr: { type: 'string', description: 'Or define custom pipeline string' },
+            initialInput: { type: 'string', description: 'Initial input for first stage' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'get_current_pipeline_stage',
+        description: 'Get the current stage to execute and its input.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Pipeline session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'record_pipeline_stage_result',
+        description: 'Record stage completion result.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Pipeline session ID' },
+            stageName: { type: 'string', description: 'Stage name' },
+            success: { type: 'boolean', description: 'Whether stage succeeded' },
+            output: { type: 'string', description: 'Stage output (passed to next stage)' },
+            error: { type: 'string', description: 'Error if failed' },
+            executionTimeMs: { type: 'number', description: 'Execution time in ms' },
+          },
+          required: ['sessionId', 'stageName', 'success', 'executionTimeMs'],
+        },
+      },
+      {
+        name: 'start_pipeline',
+        description: 'Start pipeline execution.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Pipeline session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'get_pipeline_status',
+        description: 'Get pipeline status and stage results.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Pipeline session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'list_pipeline_presets',
+        description: 'List available pipeline presets.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'generate_pipeline_orchestrator_prompt',
+        description: 'Generate prompt for pipeline orchestrator.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            sessionId: { type: 'string', description: 'Pipeline session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+
+      // === Delegation / Task Routing ===
+      {
+        name: 'detect_task_category',
+        description: 'Detect delegation category from task description. Categories: quick, standard, complex, ultrabrain, visual-engineering, artistry, writing.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: { type: 'string', description: 'Task description to categorize' },
+          },
+          required: ['taskDescription'],
+        },
+      },
+      {
+        name: 'route_task',
+        description: 'Route a task to appropriate agent and model based on description or hints.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: { type: 'string', description: 'Task description' },
+            preferredCategory: {
+              type: 'string',
+              enum: ['quick', 'standard', 'complex', 'ultrabrain', 'visual-engineering', 'artistry', 'writing'],
+              description: 'Override auto-detection with preferred category',
+            },
+            forceModel: {
+              type: 'string',
+              enum: ['haiku', 'sonnet', 'opus'],
+              description: 'Force a specific model tier',
+            },
+            isUI: { type: 'boolean', description: 'Context hint: is UI work' },
+            isDocumentation: { type: 'boolean', description: 'Context hint: is documentation' },
+            isDebugging: { type: 'boolean', description: 'Context hint: is debugging' },
+            isArchitecture: { type: 'boolean', description: 'Context hint: is architecture' },
+          },
+          required: ['taskDescription'],
+        },
+      },
+      {
+        name: 'route_by_complexity',
+        description: 'Route task using complexity estimation (file count, dependencies, keywords).',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: { type: 'string', description: 'Task description' },
+            files: { type: 'array', items: { type: 'string' }, description: 'Files to be modified' },
+          },
+          required: ['taskDescription'],
+        },
+      },
+      {
+        name: 'list_delegation_categories',
+        description: 'List all delegation categories with descriptions.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'generate_executor_loop_prompt',
+        description: 'Generate autonomous executor loop prompt for continuous task execution.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            workerId: { type: 'string', description: 'Worker ID' },
+            sessionId: { type: 'string', description: 'Session ID' },
+            planPath: { type: 'string', description: 'Path to plan' },
+            learnings: { type: 'string', description: 'Relevant learnings to inject' },
+          },
+          required: [],
+        },
+      },
     ],
   };
 });
@@ -433,6 +1400,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           taskId: safeArgs.taskId as string,
           content: safeArgs.content as string,
           pattern: safeArgs.pattern as string | undefined,
+          learningType: safeArgs.learningType as 'pattern' | 'convention' | 'gotcha' | 'discovery' | 'avoid' | 'prefer' | undefined,
+          priority: safeArgs.priority as number | undefined,
           tags: safeArgs.tags as string[] | undefined,
         });
         return {
@@ -534,6 +1503,848 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const success = manager.initPlanNotepad(safeArgs.planId as string);
         return {
           content: [{ type: 'text' as const, text: JSON.stringify({ success }) }],
+        };
+      }
+
+      // === Complexity Estimation ===
+      case 'estimate_task_complexity': {
+        const result = estimateComplexity({
+          taskDescription: safeArgs.taskDescription as string,
+          files: safeArgs.files as string[] | undefined,
+          dependencies: safeArgs.dependencies as string[] | undefined,
+        });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              ...result,
+              levelDescription: COMPLEXITY_DESCRIPTIONS[result.complexity.level],
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'get_model_for_complexity': {
+        const level = safeArgs.level as number;
+        if (level < 1 || level > 5) {
+          throw new Error('Complexity level must be between 1 and 5');
+        }
+        const model = getModelForComplexity(level as 1 | 2 | 3 | 4 | 5);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              level,
+              model,
+              description: COMPLEXITY_DESCRIPTIONS[level as 1 | 2 | 3 | 4 | 5],
+            }),
+          }],
+        };
+      }
+
+      case 'batch_estimate_complexity': {
+        const tasks = safeArgs.tasks as Array<{ name: string; action: string; files?: string[] }>;
+        const results = batchEstimate(tasks);
+        const output: Record<string, unknown> = {};
+        for (const [name, result] of results) {
+          output[name] = {
+            ...result,
+            levelDescription: COMPLEXITY_DESCRIPTIONS[result.complexity.level],
+          };
+        }
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(output, null, 2) }],
+        };
+      }
+
+      // === Verdict Evaluation ===
+      case 'evaluate_architect_checklist': {
+        const checklist = safeArgs.checklist as {
+          codeCompiles: boolean;
+          testsPass: boolean;
+          requirementsMet: boolean;
+          noRegressions: boolean;
+          codeQuality: boolean;
+        };
+        const verdict = createArchitectVerdict(
+          safeArgs.taskId as string,
+          checklist,
+          {
+            issues: safeArgs.issues as string[] | undefined,
+            suggestions: safeArgs.suggestions as string[] | undefined,
+          }
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              ...verdict,
+              checklistFormatted: formatChecklist(checklist, ARCHITECT_ITEM_NAMES),
+              approvalThreshold: APPROVAL_THRESHOLD,
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'evaluate_critic_checklist': {
+        const checklist = safeArgs.checklist as {
+          goalsAligned: boolean;
+          tasksAtomic: boolean;
+          dependenciesClear: boolean;
+          verifiable: boolean;
+          waveStructure: boolean;
+        };
+        const verdict = createCriticVerdict(
+          safeArgs.planPath as string,
+          checklist,
+          safeArgs.justification as string,
+          {
+            iteration: safeArgs.iteration as number | undefined,
+            improvements: safeArgs.improvements as string[] | undefined,
+          }
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              ...verdict,
+              checklistFormatted: formatChecklist(checklist, CRITIC_ITEM_NAMES),
+              approvalThreshold: APPROVAL_THRESHOLD,
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'get_approval_threshold': {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              threshold: APPROVAL_THRESHOLD,
+              description: `${APPROVAL_THRESHOLD}% of checklist items must pass for approval`,
+            }),
+          }],
+        };
+      }
+
+      // === Session Management ===
+      case 'create_session': {
+        const session = createSession({
+          name: safeArgs.name as string | undefined,
+          parentSessionId: safeArgs.parentSessionId as string | undefined,
+          mode: safeArgs.mode as 'idle' | 'planning' | 'executing' | 'verifying' | 'paused' | 'error' | undefined,
+          agentRole: safeArgs.agentRole as 'planner' | 'executor' | 'architect' | 'critic' | undefined,
+          activePlan: safeArgs.activePlan as string | undefined,
+        });
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(session, null, 2) }],
+        };
+      }
+
+      case 'get_session': {
+        const session = getSession(safeArgs.sessionId as string);
+        if (!session) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Session not found' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(session, null, 2) }],
+        };
+      }
+
+      case 'list_sessions': {
+        const manager = getSessionManager();
+        const sessions = manager.listActiveSessions();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              count: sessions.length,
+              sessions: sessions.map(s => ({
+                id: s.sessionId.id,
+                name: s.sessionId.name,
+                mode: s.mode,
+                agentRole: s.agentRole,
+                claimedTasks: s.claimedTasks.length,
+                startedAt: s.startedAt,
+              })),
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'claim_task_for_session': {
+        const manager = getSessionManager();
+        const success = manager.claimTask(
+          safeArgs.sessionId as string,
+          safeArgs.taskId as string
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success, taskId: safeArgs.taskId }),
+          }],
+        };
+      }
+
+      case 'complete_session': {
+        const manager = getSessionManager();
+        const result = manager.completeSession(safeArgs.sessionId as string, {
+          status: safeArgs.status as 'success' | 'failed' | 'timeout' | 'cancelled',
+          verdict: safeArgs.verdict as unknown,
+          learnings: safeArgs.learnings as string[] | undefined,
+          error: safeArgs.error as string | undefined,
+        });
+        if (!result) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Session not found' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // === Plan Revision ===
+      case 'flag_plan_for_revision': {
+        const status = flagPlanForRevision(
+          safeArgs.planPath as string,
+          safeArgs.reason as 'deviation_level_3' | 'spike_discovery' | 'blocker_found' | 'scope_change' | 'dependency_discovered' | 'manual_request',
+          safeArgs.description as string,
+          {
+            affectedTasks: safeArgs.affectedTasks as string[] | undefined,
+            source: safeArgs.source as string | undefined,
+          }
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(status, null, 2) }],
+        };
+      }
+
+      case 'check_revision_needed': {
+        const status = checkRevisionNeeded(safeArgs.planPath as string);
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(status, null, 2) }],
+        };
+      }
+
+      case 'complete_plan_revision': {
+        const result = completePlanRevision(
+          safeArgs.planPath as string,
+          safeArgs.changeDescription as string,
+          {
+            tasksAdded: safeArgs.tasksAdded as string[] | undefined,
+            tasksRemoved: safeArgs.tasksRemoved as string[] | undefined,
+            tasksModified: safeArgs.tasksModified as string[] | undefined,
+          }
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case 'get_plan_version_history': {
+        const history = getPlanVersionHistory(safeArgs.planPath as string);
+        const currentVersion = getCurrentPlanVersion(safeArgs.planPath as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ currentVersion, versions: history }, null, 2),
+          }],
+        };
+      }
+
+      // === Deviation Management ===
+      case 'report_deviation': {
+        const report = reportDeviation(
+          safeArgs.planPath as string,
+          safeArgs.taskId as string,
+          safeArgs.type as 'file_addition' | 'file_modification' | 'approach_change' | 'dependency_addition' | 'scope_expansion' | 'scope_reduction' | 'blocker_workaround' | 'performance_tradeoff' | 'other',
+          safeArgs.description as string,
+          safeArgs.planned as string,
+          safeArgs.actual as string,
+          safeArgs.reason as string,
+          {
+            affectedFiles: safeArgs.affectedFiles as string[] | undefined,
+            impact: safeArgs.impact as string | undefined,
+            level: safeArgs.level as 1 | 2 | 3 | undefined,
+          }
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(report, null, 2) }],
+        };
+      }
+
+      case 'get_deviations': {
+        const level = safeArgs.level as number | undefined;
+        let deviations;
+        if (level) {
+          deviations = getDeviationsByLevel(safeArgs.planPath as string, level as 1 | 2 | 3);
+        } else {
+          deviations = getDeviations(safeArgs.planPath as string);
+        }
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ count: deviations.length, deviations }, null, 2),
+          }],
+        };
+      }
+
+      case 'get_pending_approvals': {
+        const pending = getPendingApprovals(safeArgs.planPath as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ count: pending.length, pending }, null, 2),
+          }],
+        };
+      }
+
+      case 'submit_deviation_verdict': {
+        const result = submitArchitectVerdict(
+          safeArgs.planPath as string,
+          safeArgs.deviationId as string,
+          safeArgs.approved as boolean,
+          safeArgs.reasoning as string,
+          safeArgs.conditions as string[] | undefined
+        );
+        if (!result) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Deviation not found' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case 'get_deviation_stats': {
+        const stats = getDeviationStats(safeArgs.planPath as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(stats || { total: 0, byLevel: {}, byStatus: {}, revisionsTriggered: 0 }, null, 2),
+          }],
+        };
+      }
+
+      case 'has_unresolved_level3': {
+        const hasUnresolved = hasUnresolvedLevel3(safeArgs.planPath as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ hasUnresolvedLevel3: hasUnresolved }),
+          }],
+        };
+      }
+
+      // === Spike Management ===
+      case 'create_spike': {
+        const spike = createSpike(
+          safeArgs.planPath as string,
+          safeArgs.originalTaskId as string,
+          safeArgs.objective as string,
+          safeArgs.questions as string[],
+          {
+            category: safeArgs.category as 'technical' | 'integration' | 'performance' | 'feasibility' | 'dependency' | 'api' | 'data' | 'scope' | undefined,
+            uncertaintyLevel: safeArgs.uncertaintyLevel as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | undefined,
+            timeBoxMinutes: safeArgs.timeBoxMinutes as number | undefined,
+          }
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(spike, null, 2) }],
+        };
+      }
+
+      case 'assess_uncertainty': {
+        const assessment = assessUncertainty(
+          safeArgs.taskDescription as string,
+          {
+            isNewTechnology: safeArgs.isNewTechnology as boolean | undefined,
+            hasExternalDependency: safeArgs.hasExternalDependency as boolean | undefined,
+            isPerformanceCritical: safeArgs.isPerformanceCritical as boolean | undefined,
+            hasUnknownScope: safeArgs.hasUnknownScope as boolean | undefined,
+            requiresResearch: safeArgs.requiresResearch as boolean | undefined,
+          }
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              ...assessment,
+              needsSpike: needsSpike(assessment.uncertainty),
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'complete_spike': {
+        const spike = completeSpike(
+          safeArgs.planPath as string,
+          safeArgs.spikeId as string,
+          {
+            success: safeArgs.success as boolean,
+            findings: safeArgs.findings as string[],
+            recommendedApproach: safeArgs.recommendedApproach as string | undefined,
+            proceedWithTask: safeArgs.proceedWithTask as boolean,
+            timeSpentMinutes: safeArgs.timeSpentMinutes as number,
+            planModifications: safeArgs.planModifications as Array<{
+              type: 'add_task' | 'remove_task' | 'modify_task' | 'add_dependency' | 'change_approach';
+              description: string;
+              rationale: string;
+            }> | undefined,
+          }
+        );
+        if (!spike) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Spike not found' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(spike, null, 2) }],
+        };
+      }
+
+      case 'get_pending_spikes': {
+        const pending = getPendingSpikes(safeArgs.planPath as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ count: pending.length, spikes: pending }, null, 2),
+          }],
+        };
+      }
+
+      case 'get_spike_stats': {
+        const stats = getSpikeStats(safeArgs.planPath as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(stats || { total: 0, byStatus: {}, modificationsTriggered: 0 }, null, 2),
+          }],
+        };
+      }
+
+      // === Phase Completion & Tagging ===
+      case 'complete_phase': {
+        const result = completePhase(
+          safeArgs.phaseNumber as number,
+          safeArgs.phaseName as string
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case 'list_phase_tags': {
+        const tags = listPhaseTags();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ count: tags.length, tags }, null, 2),
+          }],
+        };
+      }
+
+      // === Advanced Rollback ===
+      case 'preview_rollback': {
+        const preview = previewRollback(safeArgs.checkpointId as string);
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(preview, null, 2) }],
+        };
+      }
+
+      case 'selective_rollback': {
+        const result = selectiveRollback(
+          safeArgs.checkpointId as string,
+          {
+            rollbackState: (safeArgs.rollbackState as boolean) ?? true,
+            rollbackSource: (safeArgs.rollbackSource as boolean) ?? false,
+            sourcePatterns: safeArgs.sourcePatterns as string[] | undefined,
+            dryRun: safeArgs.dryRun as boolean | undefined,
+          }
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case 'rollback_to_phase': {
+        const result = rollbackToPhase(
+          safeArgs.phaseNumber as number,
+          {
+            rollbackSource: safeArgs.rollbackSource as boolean | undefined,
+            dryRun: safeArgs.dryRun as boolean | undefined,
+          }
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case 'get_rollback_targets': {
+        const targets = getAvailableRollbackTargets();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              checkpointCount: targets.checkpoints.length,
+              phaseTagCount: targets.phaseTags.length,
+              ...targets,
+            }, null, 2),
+          }],
+        };
+      }
+
+      // === Swarm Management ===
+      case 'initialize_swarm': {
+        const state = await initializeSwarm(
+          safeArgs.planPath as string,
+          {
+            maxWorkers: safeArgs.maxWorkers as number | undefined,
+            claimRetries: safeArgs.claimRetries as number | undefined,
+            workerTimeoutMs: safeArgs.workerTimeoutMs as number | undefined,
+          }
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              sessionId: state.sessionId,
+              workers: state.workers.map(w => ({ id: w.worker.id, name: w.worker.name })),
+              taskCount: state.tasks.length,
+              status: state.status,
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'get_swarm_available_tasks': {
+        const tasks = getAvailableTasks(safeArgs.sessionId as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ count: tasks.length, tasks }, null, 2),
+          }],
+        };
+      }
+
+      case 'claim_swarm_task': {
+        const task = claimTask(
+          safeArgs.sessionId as string,
+          safeArgs.workerId as string,
+          safeArgs.taskId as string
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: task !== null,
+              task,
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'claim_any_swarm_task': {
+        const task = claimAnyTask(
+          safeArgs.sessionId as string,
+          safeArgs.workerId as string
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: task !== null,
+              task,
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'complete_swarm_task': {
+        const success = completeTask(
+          safeArgs.sessionId as string,
+          safeArgs.workerId as string,
+          safeArgs.taskId as string,
+          {
+            success: safeArgs.success as boolean,
+            output: safeArgs.output as string | undefined,
+            filesModified: safeArgs.filesModified as string[] | undefined,
+            error: safeArgs.error as string | undefined,
+            executionTimeMs: Date.now(), // Placeholder, ideally tracked by worker
+          }
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      case 'get_swarm_status': {
+        const statusResult = getSwarmStatus(safeArgs.sessionId as string);
+        if (!statusResult) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Swarm not found' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(statusResult, null, 2) }],
+        };
+      }
+
+      case 'start_swarm': {
+        const started = startSwarm(safeArgs.sessionId as string);
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ success: started }) }],
+        };
+      }
+
+      case 'cleanup_stale_workers': {
+        const releasedTasks = cleanupStaleWorkers(safeArgs.sessionId as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ releasedCount: releasedTasks.length, releasedTasks }),
+          }],
+        };
+      }
+
+      case 'generate_worker_prompt': {
+        const prompt = generateWorkerPrompt({
+          worker: {
+            id: safeArgs.workerId as string,
+            name: safeArgs.workerName as string,
+            index: 0,
+          },
+          sessionId: safeArgs.sessionId as string,
+          planPath: safeArgs.planPath as string,
+          learnings: safeArgs.learnings as string | undefined,
+          context: safeArgs.context as string | undefined,
+        });
+        return {
+          content: [{ type: 'text' as const, text: prompt }],
+        };
+      }
+
+      case 'generate_swarm_orchestrator_prompt': {
+        const prompt = generateOrchestratorPrompt(
+          safeArgs.planPath as string,
+          safeArgs.sessionId as string,
+          safeArgs.workerCount as number
+        );
+        return {
+          content: [{ type: 'text' as const, text: prompt }],
+        };
+      }
+
+      // === Pipeline Management ===
+      case 'create_pipeline_preset': {
+        const pipeline = createPipelineFromPreset(
+          safeArgs.preset as 'review' | 'implement' | 'debug' | 'research' | 'refactor' | 'security',
+          safeArgs.initialInput as string | undefined
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(pipeline, null, 2) }],
+        };
+      }
+
+      case 'parse_pipeline_string': {
+        const pipeline = parsePipelineString(
+          safeArgs.pipelineStr as string,
+          safeArgs.name as string | undefined
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(pipeline, null, 2) }],
+        };
+      }
+
+      case 'initialize_pipeline': {
+        let pipeline;
+        if (safeArgs.preset) {
+          pipeline = createPipelineFromPreset(
+            safeArgs.preset as 'review' | 'implement' | 'debug' | 'research' | 'refactor' | 'security',
+            safeArgs.initialInput as string | undefined
+          );
+        } else if (safeArgs.pipelineStr) {
+          pipeline = parsePipelineString(safeArgs.pipelineStr as string);
+          if (safeArgs.initialInput) {
+            pipeline.initialInput = safeArgs.initialInput as string;
+          }
+        } else {
+          throw new Error('Must provide either preset or pipelineStr');
+        }
+        const state = initializePipeline(pipeline);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              sessionId: state.sessionId,
+              status: state.status,
+              stageCount: state.pipeline.stages.length,
+              stages: state.pipeline.stages.map(s => s.name),
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'get_current_pipeline_stage': {
+        const stageInfo = getCurrentStage(safeArgs.sessionId as string);
+        if (!stageInfo) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'No current stage or pipeline not found' }) }],
+            isError: true,
+          };
+        }
+        const prompt = buildStagePrompt(stageInfo.stage, stageInfo.input);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              stage: stageInfo.stage,
+              input: stageInfo.input,
+              prompt,
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'record_pipeline_stage_result': {
+        const state = recordStageResult(
+          safeArgs.sessionId as string,
+          {
+            stageName: safeArgs.stageName as string,
+            success: safeArgs.success as boolean,
+            output: safeArgs.output as string | undefined,
+            error: safeArgs.error as string | undefined,
+            executionTimeMs: safeArgs.executionTimeMs as number,
+          }
+        );
+        if (!state) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Pipeline not found' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              status: state.status,
+              currentStage: state.currentStage,
+              totalStages: state.pipeline.stages.length,
+              completed: state.status === 'completed',
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'start_pipeline': {
+        const started = startPipeline(safeArgs.sessionId as string);
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ success: started }) }],
+        };
+      }
+
+      case 'get_pipeline_status': {
+        const statusResult = getPipelineStatus(safeArgs.sessionId as string);
+        if (!statusResult) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Pipeline not found' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(statusResult, null, 2) }],
+        };
+      }
+
+      case 'list_pipeline_presets': {
+        const presets = listPipelinePresets();
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(presets, null, 2) }],
+        };
+      }
+
+      case 'generate_pipeline_orchestrator_prompt': {
+        const fullState = getPipelineState(safeArgs.sessionId as string);
+        if (!fullState) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Pipeline not found' }) }],
+            isError: true,
+          };
+        }
+        const prompt = generatePipelineOrchestratorPrompt(fullState.pipeline, safeArgs.sessionId as string);
+        return {
+          content: [{ type: 'text' as const, text: prompt }],
+        };
+      }
+
+      // === Delegation / Task Routing ===
+      case 'detect_task_category': {
+        const category = detectCategory(safeArgs.taskDescription as string);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ category }),
+          }],
+        };
+      }
+
+      case 'route_task': {
+        const result = routeTask(
+          safeArgs.taskDescription as string,
+          {
+            preferredCategory: safeArgs.preferredCategory as 'quick' | 'standard' | 'complex' | 'ultrabrain' | 'visual-engineering' | 'artistry' | 'writing' | undefined,
+            forceModel: safeArgs.forceModel as 'haiku' | 'sonnet' | 'opus' | undefined,
+            contextHints: {
+              isUI: safeArgs.isUI as boolean | undefined,
+              isDocumentation: safeArgs.isDocumentation as boolean | undefined,
+              isDebugging: safeArgs.isDebugging as boolean | undefined,
+              isArchitecture: safeArgs.isArchitecture as boolean | undefined,
+            },
+          }
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case 'route_by_complexity': {
+        const result = routeByComplexity(
+          safeArgs.taskDescription as string,
+          safeArgs.files as string[] | undefined
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case 'list_delegation_categories': {
+        const categories = listCategories();
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(categories, null, 2) }],
+        };
+      }
+
+      case 'generate_executor_loop_prompt': {
+        const prompt = generateExecutorLoopPrompt({
+          workerId: safeArgs.workerId as string | undefined,
+          sessionId: safeArgs.sessionId as string | undefined,
+          planPath: safeArgs.planPath as string | undefined,
+          learnings: safeArgs.learnings as string | undefined,
+        });
+        return {
+          content: [{ type: 'text' as const, text: prompt }],
         };
       }
 

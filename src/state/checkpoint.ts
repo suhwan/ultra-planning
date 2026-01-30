@@ -333,3 +333,164 @@ export function getLatestCheckpoint(): Checkpoint | undefined {
   const checkpoints = listCheckpoints();
   return checkpoints.length > 0 ? checkpoints[0] : undefined;
 }
+
+// ============================================================================
+// Phase Completion Tagging
+// ============================================================================
+
+/**
+ * Create a git tag for phase completion
+ *
+ * Tags the current commit with a phase completion marker.
+ * Format: phase-{phaseNumber}-complete
+ *
+ * @param phaseNumber - Phase number (e.g., 3)
+ * @param phaseName - Optional phase name for tag message
+ * @returns Success status and tag name
+ */
+export function tagPhaseComplete(
+  phaseNumber: number,
+  phaseName?: string
+): { success: boolean; tagName?: string; error?: string } {
+  if (!isGitRepo()) {
+    return { success: false, error: 'Not a git repository' };
+  }
+
+  const tagName = `phase-${phaseNumber}-complete`;
+  const message = phaseName
+    ? `Phase ${phaseNumber} complete: ${phaseName}`
+    : `Phase ${phaseNumber} complete`;
+
+  try {
+    // Check if tag already exists
+    try {
+      execGit(['rev-parse', tagName]);
+      // If we get here, tag exists
+      return { success: false, error: `Tag ${tagName} already exists` };
+    } catch {
+      // Tag doesn't exist, which is what we want
+    }
+
+    // Create annotated tag
+    execGit(['tag', '-a', tagName, '-m', message]);
+
+    return { success: true, tagName };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * List all phase completion tags
+ *
+ * @returns Array of tag names matching phase-N-complete pattern
+ */
+export function listPhaseTags(): string[] {
+  if (!isGitRepo()) {
+    return [];
+  }
+
+  try {
+    const output = execGit(['tag', '-l', 'phase-*-complete']);
+    if (!output) return [];
+    return output.split('\n').filter(Boolean).sort();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get commit for a phase tag
+ *
+ * @param phaseNumber - Phase number
+ * @returns Commit hash or null if tag doesn't exist
+ */
+export function getPhaseTagCommit(phaseNumber: number): string | null {
+  if (!isGitRepo()) {
+    return null;
+  }
+
+  const tagName = `phase-${phaseNumber}-complete`;
+
+  try {
+    return execGit(['rev-parse', tagName]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Delete a phase tag (if needed to re-tag)
+ *
+ * @param phaseNumber - Phase number
+ * @returns Success status
+ */
+export function deletePhaseTag(phaseNumber: number): boolean {
+  if (!isGitRepo()) {
+    return false;
+  }
+
+  const tagName = `phase-${phaseNumber}-complete`;
+
+  try {
+    execGit(['tag', '-d', tagName]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Create checkpoint and tag for phase completion
+ *
+ * Combines checkpoint creation with phase tagging for a complete
+ * phase completion marker.
+ *
+ * @param phaseNumber - Phase number
+ * @param phaseName - Phase name/description
+ * @returns Combined result
+ */
+export function completePhase(
+  phaseNumber: number,
+  phaseName: string
+): {
+  success: boolean;
+  checkpoint?: Checkpoint;
+  tagName?: string;
+  error?: string;
+} {
+  // Create checkpoint first
+  const checkpointResult = createCheckpoint(
+    `phase-${phaseNumber}`,
+    0,
+    0,
+    `Phase ${phaseNumber} complete: ${phaseName}`
+  );
+
+  if (!checkpointResult.success) {
+    return {
+      success: false,
+      error: `Checkpoint failed: ${checkpointResult.error}`,
+    };
+  }
+
+  // Create tag
+  const tagResult = tagPhaseComplete(phaseNumber, phaseName);
+
+  if (!tagResult.success) {
+    return {
+      success: false,
+      checkpoint: checkpointResult.checkpoint,
+      error: `Tag failed: ${tagResult.error}`,
+    };
+  }
+
+  return {
+    success: true,
+    checkpoint: checkpointResult.checkpoint,
+    tagName: tagResult.tagName,
+  };
+}

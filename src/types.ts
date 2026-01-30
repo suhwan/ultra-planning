@@ -63,8 +63,8 @@ export interface KeyLink {
 // State Types
 // ============================================================================
 
-/** Session state for .ultraplan/state/session.json */
-export interface SessionState {
+/** Basic session state for .ultraplan/state/session.json (legacy format) */
+export interface BasicSessionState {
   active_plan: string | null;
   started_at: string;
   session_id: string;

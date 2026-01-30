@@ -1,0 +1,127 @@
+# Executor Result Schema
+# Defines the output format from task executors
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: ExecutorResult
+description: Result returned by executor after task completion
+
+type: object
+required:
+  - taskId
+  - status
+  - timestamp
+
+properties:
+  taskId:
+    type: string
+    pattern: "^\\d{2}-\\d{2}-\\d{2}$"
+    description: Task identifier (e.g., "06-01-01")
+
+  status:
+    type: string
+    enum:
+      - success   # Task completed successfully
+      - failed    # Task failed with error
+      - partial   # Task partially completed
+    description: Execution outcome
+
+  timestamp:
+    type: string
+    format: date-time
+    description: ISO 8601 completion timestamp
+
+  filesModified:
+    type: array
+    items:
+      type: string
+    description: List of files modified during execution
+
+  linesChanged:
+    type: integer
+    minimum: 0
+    description: Total lines added/removed
+
+  commitHash:
+    type: string
+    pattern: "^[a-f0-9]{7,40}$"
+    description: Git commit hash (if committed)
+
+  testResults:
+    type: object
+    properties:
+      passed:
+        type: integer
+        minimum: 0
+      failed:
+        type: integer
+        minimum: 0
+      skipped:
+        type: integer
+        minimum: 0
+    description: Test execution results
+
+  error:
+    type: string
+    description: Error message (if status is failed)
+
+  learnings:
+    type: array
+    items:
+      type: string
+    description: Discoveries during execution (for LEARNINGS.md)
+
+  deviation:
+    $ref: "#/definitions/DeviationReport"
+    description: Deviation report (if deviated from plan)
+
+definitions:
+  DeviationReport:
+    type: object
+    required:
+      - level
+      - taskId
+      - reason
+    properties:
+      level:
+        type: integer
+        enum: [1, 2, 3]
+        description: |
+          1 = Informational (log only)
+          2 = Requires Architect approval
+          3 = Requires plan modification
+      taskId:
+        type: string
+      timestamp:
+        type: string
+        format: date-time
+      originalPlan:
+        type: string
+      actualImplementation:
+        type: string
+      reason:
+        type: string
+      impact:
+        type: string
+        enum: [none, minor, major]
+      requiresPlanModification:
+        type: boolean
+      affectedTasks:
+        type: array
+        items:
+          type: string
+
+examples:
+  - taskId: "06-01-01"
+    status: success
+    timestamp: "2026-01-31T10:30:00Z"
+    filesModified:
+      - "src/auth/jwt.ts"
+      - "src/auth/types.ts"
+    linesChanged: 45
+    commitHash: "abc1234"
+    testResults:
+      passed: 12
+      failed: 0
+      skipped: 1
+    learnings:
+      - "JWT library requires explicit algorithm specification"

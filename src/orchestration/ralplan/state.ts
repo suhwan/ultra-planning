@@ -11,7 +11,7 @@ import type {
   RalplanState,
   RalplanConfig,
   RalplanPhase,
-  CriticVerdict,
+  RalplanCriticVerdict,
 } from './types.js';
 import { DEFAULT_RALPLAN_CONFIG } from './types.js';
 
@@ -124,7 +124,7 @@ export function updateRalplanPhase(phase: RalplanPhase): boolean {
  * @returns True if update succeeded
  */
 export function advanceIteration(
-  verdict: CriticVerdict,
+  verdict: RalplanCriticVerdict,
   feedback?: string
 ): boolean {
   const current = getRalplanState();

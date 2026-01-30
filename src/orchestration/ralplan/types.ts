@@ -9,15 +9,16 @@ export type RalplanPhase =
   | 'complete';             // Loop finished
 
 /**
- * Critic verdict type
+ * Ralplan critic verdict type (simple alias)
+ * @see CriticVerdict in verdicts module for full interface
  */
-export type CriticVerdict = 'OKAY' | 'REJECT';
+export type RalplanCriticVerdict = 'OKAY' | 'REJECT';
 
 /**
  * Critic review result
  */
 export interface CriticReviewResult {
-  verdict: CriticVerdict;
+  verdict: RalplanCriticVerdict;
   justification: string;
   improvements?: string[];
 }
@@ -55,7 +56,7 @@ export interface RalplanState extends Record<string, unknown> {
   /** Original task description */
   taskDescription: string;
   /** Last critic verdict (if any) */
-  lastVerdict?: CriticVerdict;
+  lastVerdict?: RalplanCriticVerdict;
   /** Last critic feedback (if rejected) */
   lastFeedback?: string;
   /** Whether approval was forced (max iterations reached) */

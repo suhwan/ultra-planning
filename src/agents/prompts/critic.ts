@@ -161,49 +161,79 @@ Document findings for each criterion with specific examples.`,
   {
     name: 'verdict_format',
     tag: 'verdict_format',
-    content: `## Final Verdict Format
+    content: `## Final Verdict Format (Checklist-Based)
 
-**[OKAY / REJECT]**
+### Objective Checklist (5 items, 80% = OKAY)
 
-**Justification**: [Concise explanation of the verdict]
+You MUST evaluate these 5 criteria and produce a structured verdict:
 
-**Summary**:
-- Clarity: [Brief assessment - PASS/FAIL with 1-2 sentence explanation]
-- Verifiability: [Brief assessment - PASS/FAIL with 1-2 sentence explanation]
-- Completeness: [Brief assessment - PASS/FAIL with 1-2 sentence explanation]
-- Big Picture: [Brief assessment - PASS/FAIL with 1-2 sentence explanation]
+| Criterion | Question | PASS/FAIL |
+|-----------|----------|-----------|
+| **goalsAligned** | Do tasks align with phase/project goals? | |
+| **tasksAtomic** | Is each task atomic (single commit worthy)? | |
+| **dependenciesClear** | Are dependencies explicit and correct? | |
+| **verifiable** | Does each task have clear "done" criteria? | |
+| **waveStructure** | Do wave assignments enable parallel execution? | |
 
-**[If REJECT, provide top 3-5 critical improvements needed]**
+**Verdict Logic:**
+- **OKAY**: 4+ items PASS (80%+)
+- **REJECT**: 3+ items FAIL (< 80%)
+
+### Required Output Format
+
+\`\`\`yaml
+verdict: OKAY | REJECT
+passPercentage: [0-100]
+checklist:
+  goalsAligned: true | false
+  tasksAtomic: true | false
+  dependenciesClear: true | false
+  verifiable: true | false
+  waveStructure: true | false
+justification: |
+  [2-3 sentence explanation of the verdict]
+improvements:  # Only if REJECT
+  - [specific improvement 1]
+  - [specific improvement 2]
+strengths:     # Optional
+  - [positive aspect 1]
+\`\`\`
 
 ### Example OKAY Verdict:
-\`\`\`
-**OKAY**
-
-**Justification**: All criteria met. Tasks are specific with clear verification, context is complete with proper references, and the overall objective is well-articulated.
-
-**Summary**:
-- Clarity: PASS - All tasks have specific file paths and actionable instructions
-- Verifiability: PASS - Each task includes verification commands and acceptance criteria
-- Completeness: PASS - All referenced files exist and contain expected content
-- Big Picture: PASS - Objective clearly stated with logical task flow
+\`\`\`yaml
+verdict: OKAY
+passPercentage: 100
+checklist:
+  goalsAligned: true
+  tasksAtomic: true
+  dependenciesClear: true
+  verifiable: true
+  waveStructure: true
+justification: |
+  All criteria met. Tasks are atomic with clear verification,
+  dependencies are explicit, and wave structure enables 3-way parallelism.
+strengths:
+  - Good task granularity (2-3 tasks per feature)
+  - Clear dependency chain
 \`\`\`
 
 ### Example REJECT Verdict:
-\`\`\`
-**REJECT**
-
-**Justification**: Critical context gaps prevent confident execution. Task instructions lack specificity and verification criteria are vague.
-
-**Summary**:
-- Clarity: FAIL - Task 2 references "update the module" without specifying which module
-- Verifiability: FAIL - Task 3 verify says "check it works" without objective criteria
-- Completeness: PASS - Referenced files are present
-- Big Picture: FAIL - No explanation of how tasks connect to phase objective
-
-**Critical Improvements Needed**:
-1. Task 2: Specify exact module path and what changes are required
-2. Task 3: Replace "check it works" with specific test command or acceptance criteria
-3. Add <objective> section explaining how these tasks achieve the phase goal
+\`\`\`yaml
+verdict: REJECT
+passPercentage: 40
+checklist:
+  goalsAligned: true
+  tasksAtomic: false
+  dependenciesClear: true
+  verifiable: false
+  waveStructure: false
+justification: |
+  Task 3 combines multiple concerns (database + API). Tasks 2 and 4
+  lack verification criteria. Wave assignments don't enable parallelism.
+improvements:
+  - Split Task 3 into "Create user table schema" and "Add user API endpoint"
+  - Add verification criteria to Task 2: "Unit tests pass for validation logic"
+  - Reassign waves: Tasks 1,2 can run in parallel (Wave 1)
 \`\`\``,
   },
 ];

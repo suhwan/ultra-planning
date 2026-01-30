@@ -12,6 +12,15 @@
 /** Notepad category types */
 export type NotepadCategory = 'learnings' | 'decisions' | 'issues';
 
+/** Learning type categories for better classification */
+export type LearningType =
+  | 'pattern'     // Successful approach that should be reused
+  | 'convention'  // Project-specific style or standard
+  | 'gotcha'      // Non-obvious issue that could trip up others
+  | 'discovery'   // New information about codebase or requirements
+  | 'avoid'       // Anti-pattern or approach to avoid
+  | 'prefer';     // Preferred approach over alternatives
+
 // ============================================================================
 // Entry Types
 // ============================================================================
@@ -32,6 +41,10 @@ export interface NotepadEntry {
 export interface LearningEntry extends NotepadEntry {
   /** File:lines reference (e.g., "src/utils.ts:45-60") */
   pattern?: string;
+  /** Learning type for categorization */
+  learningType?: LearningType;
+  /** Priority (1-5, higher = more important) */
+  priority?: number;
 }
 
 /** Decision entry with rationale */
