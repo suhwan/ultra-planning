@@ -1,518 +1,69 @@
 /**
- * Swarm Manager
+ * Swarm Manager - Simplified for Context Architect Pattern
  *
- * Orchestrates multiple parallel workers using native Claude Code Task API.
- * Manages task pool, worker coordination, and claim resolution.
+ * Provides configuration and prompt generation support for swarm execution.
+ * State management is delegated to Claude Code's native Task API.
+ *
+ * @module swarm
  */
-
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { join, dirname, basename } from 'path';
-import { randomUUID } from 'crypto';
 
 import {
   WorkerId,
   WorkerState,
-  WorkerStatus,
-  SwarmTask,
-  SwarmTaskStatus,
-  SwarmTaskResult,
-  SwarmState,
-  SwarmStatus,
-  SwarmStats,
   SwarmConfig,
   WorkerPromptConfig,
-  WorkerReport,
   DEFAULT_SWARM_CONFIG,
 } from './types.js';
 
-import { buildDependencyMap } from '../../sync/dependency-map.js';
-import { parsePlanForSync, extractTaskMappings } from '../../sync/plan-parser.js';
-
 // ============================================================================
-// State File Management
+// Configuration
 // ============================================================================
-
-const SWARM_STATE_DIR = '.ultraplan/state/swarm';
 
 /**
- * Get swarm state path
+ * Create swarm configuration with defaults
  */
-function getSwarmStatePath(sessionId: string, projectRoot: string = process.cwd()): string {
-  return join(projectRoot, SWARM_STATE_DIR, `${sessionId}.json`);
+export function createSwarmConfig(options: Partial<SwarmConfig> = {}): SwarmConfig {
+  return { ...DEFAULT_SWARM_CONFIG, ...options };
 }
 
 /**
- * Load swarm state
+ * Get recommended worker count based on task count
  */
-export function loadSwarmState(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): SwarmState | null {
-  const statePath = getSwarmStatePath(sessionId, projectRoot);
-
-  if (!existsSync(statePath)) {
-    return null;
-  }
-
-  try {
-    const data = readFileSync(statePath, 'utf-8');
-    return JSON.parse(data) as SwarmState;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Save swarm state
- */
-function saveSwarmState(state: SwarmState, projectRoot: string = process.cwd()): void {
-  const statePath = getSwarmStatePath(state.sessionId, projectRoot);
-  const dir = dirname(statePath);
-
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-
-  writeFileSync(statePath, JSON.stringify(state, null, 2));
+export function recommendWorkerCount(taskCount: number): number {
+  // Rule of thumb: 1 worker per 3 tasks, max 5 workers
+  const recommended = Math.ceil(taskCount / 3);
+  return Math.min(recommended, DEFAULT_SWARM_CONFIG.maxWorkers);
 }
 
 // ============================================================================
-// Swarm Initialization
+// Worker Identity Generation
 // ============================================================================
 
 /**
- * Initialize a new swarm from a plan
+ * Generate worker identities for a swarm
  */
-export async function initializeSwarm(
-  planPath: string,
-  config: Partial<SwarmConfig> = {},
-  projectRoot: string = process.cwd()
-): Promise<SwarmState> {
-  const fullConfig: SwarmConfig = { ...DEFAULT_SWARM_CONFIG, ...config };
-  const sessionId = randomUUID();
+export function generateWorkerIds(count: number, sessionId?: string): WorkerId[] {
+  const workers: WorkerId[] = [];
 
-  // Parse plan and extract tasks
-  const planData = await parsePlanForSync(join(projectRoot, planPath));
-  const taskMappings = extractTaskMappings(planData);
-  const dependencyMap = buildDependencyMap(taskMappings);
-
-  // Create swarm tasks
-  const tasks: SwarmTask[] = taskMappings.map(mapping => ({
-    id: mapping.task_id,
-    subject: mapping.name,
-    description: mapping.tool_params.prompt,
-    wave: mapping.wave,
-    blockedBy: dependencyMap[mapping.task_id] || [],
-    status: 'pending' as SwarmTaskStatus,
-  }));
-
-  // Mark wave 1 tasks as available
-  for (const task of tasks) {
-    if (task.wave === 1) {
-      task.status = 'available';
-    }
-  }
-
-  // Initialize workers
-  const workers: WorkerState[] = [];
-  for (let i = 0; i < fullConfig.maxWorkers; i++) {
+  for (let i = 0; i < count; i++) {
     workers.push({
-      worker: {
-        id: randomUUID(),
-        name: `Worker-${i + 1}`,
-        index: i,
-      },
-      status: 'idle',
-      completedTasks: [],
-      failedTasks: [],
-      lastHeartbeat: new Date().toISOString(),
+      id: sessionId ? `${sessionId}-worker-${i}` : `worker-${i}-${Date.now()}`,
+      name: `Worker-${i + 1}`,
+      index: i,
     });
   }
 
-  // Calculate initial stats
-  const stats = calculateStats(tasks, workers);
-
-  const state: SwarmState = {
-    planPath,
-    sessionId,
-    config: fullConfig,
-    workers,
-    tasks,
-    status: 'initializing',
-    startedAt: new Date().toISOString(),
-    stats,
-  };
-
-  saveSwarmState(state, projectRoot);
-
-  return state;
-}
-
-/**
- * Calculate swarm statistics
- */
-function calculateStats(tasks: SwarmTask[], workers: WorkerState[]): SwarmStats {
-  return {
-    totalTasks: tasks.length,
-    completedTasks: tasks.filter(t => t.status === 'completed').length,
-    failedTasks: tasks.filter(t => t.status === 'failed').length,
-    inProgressTasks: tasks.filter(t => t.status === 'executing' || t.status === 'claimed').length,
-    availableTasks: tasks.filter(t => t.status === 'available').length,
-    blockedTasks: tasks.filter(t => t.status === 'pending').length,
-    activeWorkers: workers.filter(w => w.status === 'executing' || w.status === 'claiming').length,
-    totalExecutionTimeMs: tasks
-      .filter(t => t.result?.executionTimeMs)
-      .reduce((sum, t) => sum + (t.result?.executionTimeMs || 0), 0),
-  };
+  return workers;
 }
 
 // ============================================================================
-// Task Pool Management
-// ============================================================================
-
-/**
- * Get available tasks (not blocked, not claimed)
- */
-export function getAvailableTasks(sessionId: string, projectRoot: string = process.cwd()): SwarmTask[] {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return [];
-
-  return state.tasks.filter(t => t.status === 'available');
-}
-
-/**
- * Try to claim a task for a worker
- * Returns the task if claimed, null if failed (race condition)
- */
-export function claimTask(
-  sessionId: string,
-  workerId: string,
-  taskId: string,
-  projectRoot: string = process.cwd()
-): SwarmTask | null {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return null;
-
-  const task = state.tasks.find(t => t.id === taskId);
-  if (!task) return null;
-
-  // Check if task is available
-  if (task.status !== 'available') {
-    return null; // Already claimed or not available
-  }
-
-  // Claim the task
-  task.status = 'claimed';
-  task.claimedBy = workerId;
-  task.claimedAt = new Date().toISOString();
-
-  // Update worker state
-  const worker = state.workers.find(w => w.worker.id === workerId);
-  if (worker) {
-    worker.status = 'executing';
-    worker.currentTaskId = taskId;
-    worker.lastHeartbeat = new Date().toISOString();
-  }
-
-  // Update stats
-  state.stats = calculateStats(state.tasks, state.workers);
-
-  saveSwarmState(state, projectRoot);
-
-  return task;
-}
-
-/**
- * Try to claim any available task
- */
-export function claimAnyTask(
-  sessionId: string,
-  workerId: string,
-  projectRoot: string = process.cwd()
-): SwarmTask | null {
-  const available = getAvailableTasks(sessionId, projectRoot);
-  if (available.length === 0) return null;
-
-  // Try to claim the first available task
-  // In real concurrent scenario, this might fail due to race condition
-  for (const task of available) {
-    const claimed = claimTask(sessionId, workerId, task.id, projectRoot);
-    if (claimed) return claimed;
-  }
-
-  return null;
-}
-
-/**
- * Release a claimed task (worker giving up)
- */
-export function releaseTask(
-  sessionId: string,
-  workerId: string,
-  taskId: string,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return false;
-
-  const task = state.tasks.find(t => t.id === taskId);
-  if (!task) return false;
-
-  // Verify the worker owns this task
-  if (task.claimedBy !== workerId) {
-    return false;
-  }
-
-  // Release the task
-  task.status = 'available';
-  task.claimedBy = undefined;
-  task.claimedAt = undefined;
-
-  // Update worker state
-  const worker = state.workers.find(w => w.worker.id === workerId);
-  if (worker) {
-    worker.status = 'idle';
-    worker.currentTaskId = undefined;
-  }
-
-  state.stats = calculateStats(state.tasks, state.workers);
-  saveSwarmState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Mark a task as completed
- */
-export function completeTask(
-  sessionId: string,
-  workerId: string,
-  taskId: string,
-  result: SwarmTaskResult,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return false;
-
-  const task = state.tasks.find(t => t.id === taskId);
-  if (!task) return false;
-
-  // Verify the worker owns this task
-  if (task.claimedBy !== workerId) {
-    return false;
-  }
-
-  // Complete the task
-  task.status = result.success ? 'completed' : 'failed';
-  task.completedAt = new Date().toISOString();
-  task.result = result;
-
-  // Update worker state
-  const worker = state.workers.find(w => w.worker.id === workerId);
-  if (worker) {
-    worker.status = 'idle';
-    worker.currentTaskId = undefined;
-    if (result.success) {
-      worker.completedTasks.push(taskId);
-    } else {
-      worker.failedTasks.push(taskId);
-    }
-  }
-
-  // Unblock tasks that were waiting on this one
-  if (result.success) {
-    updateBlockedTasks(state);
-  }
-
-  // Check if swarm is complete
-  checkSwarmCompletion(state);
-
-  state.stats = calculateStats(state.tasks, state.workers);
-  saveSwarmState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Update blocked tasks after a task completion
- */
-function updateBlockedTasks(state: SwarmState): void {
-  const completedIds = new Set(
-    state.tasks.filter(t => t.status === 'completed').map(t => t.id)
-  );
-
-  for (const task of state.tasks) {
-    if (task.status === 'pending') {
-      // Check if all blocking tasks are complete
-      const allBlockersComplete = task.blockedBy.every(id => completedIds.has(id));
-      if (allBlockersComplete) {
-        task.status = 'available';
-      }
-    }
-  }
-}
-
-/**
- * Check if swarm execution is complete
- */
-function checkSwarmCompletion(state: SwarmState): void {
-  const pendingOrAvailable = state.tasks.filter(
-    t => t.status === 'pending' || t.status === 'available' || t.status === 'claimed' || t.status === 'executing'
-  );
-
-  if (pendingOrAvailable.length === 0) {
-    state.status = 'completed';
-    state.completedAt = new Date().toISOString();
-  }
-}
-
-// ============================================================================
-// Worker Management
-// ============================================================================
-
-/**
- * Update worker heartbeat
- */
-export function workerHeartbeat(
-  sessionId: string,
-  workerId: string,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return false;
-
-  const worker = state.workers.find(w => w.worker.id === workerId);
-  if (!worker) return false;
-
-  worker.lastHeartbeat = new Date().toISOString();
-  saveSwarmState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Check for stale workers and release their tasks
- */
-export function cleanupStaleWorkers(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): string[] {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state || !state.config.autoReleaseStale) return [];
-
-  const now = Date.now();
-  const releasedTasks: string[] = [];
-
-  for (const worker of state.workers) {
-    const lastHeartbeat = new Date(worker.lastHeartbeat).getTime();
-    const isStale = now - lastHeartbeat > state.config.workerTimeoutMs;
-
-    if (isStale && worker.currentTaskId) {
-      // Release the stale task
-      const task = state.tasks.find(t => t.id === worker.currentTaskId);
-      if (task && task.status === 'claimed') {
-        task.status = 'available';
-        task.claimedBy = undefined;
-        task.claimedAt = undefined;
-        releasedTasks.push(task.id);
-      }
-
-      worker.status = 'terminated';
-      worker.currentTaskId = undefined;
-      worker.error = 'Worker timed out';
-    }
-  }
-
-  if (releasedTasks.length > 0) {
-    state.stats = calculateStats(state.tasks, state.workers);
-    saveSwarmState(state, projectRoot);
-  }
-
-  return releasedTasks;
-}
-
-/**
- * Get worker state
- */
-export function getWorkerState(
-  sessionId: string,
-  workerId: string,
-  projectRoot: string = process.cwd()
-): WorkerState | null {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return null;
-
-  return state.workers.find(w => w.worker.id === workerId) || null;
-}
-
-// ============================================================================
-// Swarm Control
-// ============================================================================
-
-/**
- * Start the swarm
- */
-export function startSwarm(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return false;
-
-  state.status = 'running';
-  saveSwarmState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Pause the swarm
- */
-export function pauseSwarm(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return false;
-
-  state.status = 'paused';
-  saveSwarmState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Get swarm status
- */
-export function getSwarmStatus(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): { status: SwarmStatus; stats: SwarmStats } | null {
-  const state = loadSwarmState(sessionId, projectRoot);
-  if (!state) return null;
-
-  return {
-    status: state.status,
-    stats: state.stats,
-  };
-}
-
-/**
- * Get full swarm state
- */
-export function getSwarmState(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): SwarmState | null {
-  return loadSwarmState(sessionId, projectRoot);
-}
-
-// ============================================================================
-// Worker Prompt Generation
+// Prompt Generation (Legacy - use prompts module instead)
 // ============================================================================
 
 /**
  * Generate worker prompt for autonomous task execution
+ *
+ * @deprecated Use prompts module generateWorkerPrompt instead
  */
 export function generateWorkerPrompt(config: WorkerPromptConfig): string {
   return `# Swarm Worker: ${config.worker.name}
@@ -531,7 +82,7 @@ ${config.planPath ? `- **Plan**: ${config.planPath}` : ''}
 
 ## Execution Loop
 
-Repeat until no available tasks:
+Use Claude Code's native Task API:
 
 \`\`\`
 1. Call TaskList to see available tasks
@@ -552,7 +103,7 @@ When claiming a task:
 2. Call TaskUpdate with owner set to your worker ID
 3. If the task was already claimed by another worker, the update will fail
 4. On failure, immediately try claiming a different task
-5. Retry up to 3 times before reporting no work available
+5. Retry up to ${config.model === 'haiku' ? 2 : 3} times before reporting no work available
 
 ## Completion Reporting
 
@@ -582,6 +133,8 @@ Start by calling TaskList to see available tasks.
 
 /**
  * Generate orchestrator prompt for managing the swarm
+ *
+ * @deprecated Use prompts module generateOrchestratorPrompt instead
  */
 export function generateOrchestratorPrompt(
   planPath: string,
@@ -598,10 +151,8 @@ You are orchestrating a swarm of ${workerCount} parallel workers executing tasks
 ## Your Responsibilities
 
 1. **Initialize Workers**: Spawn ${workerCount} worker agents using Task tool with run_in_background: true
-2. **Monitor Progress**: Periodically check swarm status
-3. **Handle Failures**: Restart failed workers if needed
-4. **Clean Up**: Release stale task claims
-5. **Report Completion**: When all tasks are done, summarize results
+2. **Monitor Progress**: Periodically check TaskList for overall progress
+3. **Handle Completion**: When all tasks are done, summarize results
 
 ## Spawning Workers
 
@@ -619,19 +170,65 @@ Task(
 ## Monitoring
 
 Every 30 seconds:
-1. Check getSwarmStatus for overall progress
-2. Check for stale workers using cleanupStaleWorkers
-3. If a worker died, spawn a replacement
+1. Check TaskList for overall progress
+2. Count completed vs total tasks
+3. Report progress
 
 ## Completion
 
-When stats show completedTasks == totalTasks:
-1. Stop all workers
-2. Generate summary report
-3. Mark swarm as complete
+When TaskList shows all tasks completed:
+1. Report final summary
+2. List any failed tasks
+3. Mark orchestration complete
 
 ## Begin
 
 Initialize the swarm and spawn workers.
 `;
 }
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Calculate estimated execution time for a swarm
+ */
+export function estimateSwarmDuration(
+  taskCount: number,
+  workerCount: number,
+  avgTaskMinutes: number = 5
+): {
+  estimatedMinutes: number;
+  parallel: boolean;
+} {
+  const parallel = workerCount > 1;
+  const estimatedMinutes = parallel
+    ? Math.ceil(taskCount * avgTaskMinutes / workerCount)
+    : taskCount * avgTaskMinutes;
+
+  return { estimatedMinutes, parallel };
+}
+
+/**
+ * Generate a session ID for swarm execution
+ */
+export function generateSessionId(): string {
+  return `swarm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// ============================================================================
+// DEPRECATED: State Management Functions
+// ============================================================================
+// These functions have been removed in v3.0 following the Context Architect pattern.
+// State management is now handled by Claude Code's native Task API.
+//
+// Removed functions:
+// - initializeSwarm() - Use TaskCreate instead
+// - claimTask() - Use TaskUpdate with owner instead
+// - completeTask() - Use TaskUpdate with status instead
+// - getSwarmStatus() - Use TaskList instead
+// - loadSwarmState() - Use TaskList instead
+// - cleanupStaleWorkers() - Claude Code handles timeouts
+//
+// See: https://docs.anthropic.com/claude-code/task-api

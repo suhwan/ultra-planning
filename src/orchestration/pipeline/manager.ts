@@ -1,19 +1,15 @@
 /**
- * Pipeline Manager
+ * Pipeline Manager - Simplified for Context Architect Pattern
  *
- * Manages sequential agent chaining with data passing between stages.
+ * Provides pipeline definitions, presets, and prompt generation support.
+ * State management is delegated to Claude Code's native Task API.
+ *
+ * @module pipeline
  */
-
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { randomUUID } from 'crypto';
 
 import {
   Pipeline,
   PipelineStage,
-  PipelineState,
-  PipelineStatus,
-  StageResult,
   PipelinePreset,
   PipelineConfig,
   PIPELINE_PRESETS,
@@ -22,54 +18,6 @@ import {
 
 // Re-export PIPELINE_PRESETS for convenience
 export { PIPELINE_PRESETS };
-
-// ============================================================================
-// State File Management
-// ============================================================================
-
-const PIPELINE_STATE_DIR = '.ultraplan/state/pipeline';
-
-/**
- * Get pipeline state path
- */
-function getPipelineStatePath(sessionId: string, projectRoot: string = process.cwd()): string {
-  return join(projectRoot, PIPELINE_STATE_DIR, `${sessionId}.json`);
-}
-
-/**
- * Load pipeline state
- */
-export function loadPipelineState(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): PipelineState | null {
-  const statePath = getPipelineStatePath(sessionId, projectRoot);
-
-  if (!existsSync(statePath)) {
-    return null;
-  }
-
-  try {
-    const data = readFileSync(statePath, 'utf-8');
-    return JSON.parse(data) as PipelineState;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Save pipeline state
- */
-function savePipelineState(state: PipelineState, projectRoot: string = process.cwd()): void {
-  const statePath = getPipelineStatePath(state.sessionId, projectRoot);
-  const dir = dirname(statePath);
-
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-
-  writeFileSync(statePath, JSON.stringify(state, null, 2));
-}
 
 // ============================================================================
 // Pipeline Creation
@@ -148,242 +96,15 @@ export function parsePipelineString(
 }
 
 // ============================================================================
-// Pipeline Initialization
-// ============================================================================
-
-/**
- * Initialize a pipeline for execution
- */
-export function initializePipeline(
-  pipeline: Pipeline,
-  projectRoot: string = process.cwd()
-): PipelineState {
-  const sessionId = randomUUID();
-
-  const state: PipelineState = {
-    pipeline,
-    sessionId,
-    currentStage: 0,
-    results: [],
-    status: 'pending',
-    startedAt: new Date().toISOString(),
-    lastOutput: pipeline.initialInput,
-  };
-
-  savePipelineState(state, projectRoot);
-
-  return state;
-}
-
-// ============================================================================
-// Stage Execution
+// Prompt Generation
 // ============================================================================
 
 /**
  * Build prompt for a stage
  */
 export function buildStagePrompt(stage: PipelineStage, input: string): string {
-  return stage.promptTemplate.replace('{input}', input);
+  return stage.promptTemplate.replaceAll('{input}', input);
 }
-
-/**
- * Record stage result
- */
-export function recordStageResult(
-  sessionId: string,
-  result: StageResult,
-  projectRoot: string = process.cwd()
-): PipelineState | null {
-  const state = loadPipelineState(sessionId, projectRoot);
-  if (!state) return null;
-
-  state.results.push(result);
-
-  if (result.success) {
-    state.lastOutput = result.output;
-    state.currentStage++;
-
-    // Check if pipeline is complete
-    if (state.currentStage >= state.pipeline.stages.length) {
-      state.status = 'completed';
-      state.completedAt = new Date().toISOString();
-    }
-  } else if (state.pipeline.stopOnFailure) {
-    state.status = 'failed';
-    state.completedAt = new Date().toISOString();
-  } else {
-    // Continue to next stage even on failure
-    state.currentStage++;
-    if (state.currentStage >= state.pipeline.stages.length) {
-      state.status = 'completed';
-      state.completedAt = new Date().toISOString();
-    }
-  }
-
-  savePipelineState(state, projectRoot);
-
-  return state;
-}
-
-/**
- * Get current stage to execute
- */
-export function getCurrentStage(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): { stage: PipelineStage; input: string } | null {
-  const state = loadPipelineState(sessionId, projectRoot);
-  if (!state) return null;
-  if (state.status !== 'running' && state.status !== 'pending') return null;
-  if (state.currentStage >= state.pipeline.stages.length) return null;
-
-  const stage = state.pipeline.stages[state.currentStage];
-  const input = state.lastOutput || '';
-
-  return { stage, input };
-}
-
-/**
- * Get parallel stages that can run together
- */
-export function getParallelStages(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): { stages: PipelineStage[]; input: string } | null {
-  const state = loadPipelineState(sessionId, projectRoot);
-  if (!state) return null;
-  if (state.status !== 'running' && state.status !== 'pending') return null;
-
-  const parallelStages: PipelineStage[] = [];
-  let idx = state.currentStage;
-
-  // Collect consecutive parallel stages
-  while (idx < state.pipeline.stages.length) {
-    const stage = state.pipeline.stages[idx];
-    if (stage.parallel) {
-      parallelStages.push(stage);
-      idx++;
-    } else if (parallelStages.length === 0) {
-      // First non-parallel stage - just return it
-      parallelStages.push(stage);
-      break;
-    } else {
-      // End of parallel group
-      break;
-    }
-  }
-
-  return {
-    stages: parallelStages,
-    input: state.lastOutput || '',
-  };
-}
-
-// ============================================================================
-// Pipeline Control
-// ============================================================================
-
-/**
- * Start pipeline execution
- */
-export function startPipeline(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadPipelineState(sessionId, projectRoot);
-  if (!state) return false;
-
-  state.status = 'running';
-  savePipelineState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Pause pipeline execution
- */
-export function pausePipeline(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadPipelineState(sessionId, projectRoot);
-  if (!state) return false;
-
-  state.status = 'paused';
-  savePipelineState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Resume pipeline execution
- */
-export function resumePipeline(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadPipelineState(sessionId, projectRoot);
-  if (!state || state.status !== 'paused') return false;
-
-  state.status = 'running';
-  savePipelineState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Cancel pipeline execution
- */
-export function cancelPipeline(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): boolean {
-  const state = loadPipelineState(sessionId, projectRoot);
-  if (!state) return false;
-
-  state.status = 'cancelled';
-  state.completedAt = new Date().toISOString();
-  savePipelineState(state, projectRoot);
-
-  return true;
-}
-
-/**
- * Get pipeline status
- */
-export function getPipelineStatus(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): {
-  status: PipelineStatus;
-  currentStage: number;
-  totalStages: number;
-  results: StageResult[];
-} | null {
-  const state = loadPipelineState(sessionId, projectRoot);
-  if (!state) return null;
-
-  return {
-    status: state.status,
-    currentStage: state.currentStage,
-    totalStages: state.pipeline.stages.length,
-    results: state.results,
-  };
-}
-
-/**
- * Get full pipeline state
- */
-export function getPipelineState(
-  sessionId: string,
-  projectRoot: string = process.cwd()
-): PipelineState | null {
-  return loadPipelineState(sessionId, projectRoot);
-}
-
-// ============================================================================
-// Prompt Generation
-// ============================================================================
 
 /**
  * Generate orchestrator prompt for pipeline execution
@@ -408,46 +129,165 @@ ${stageList}
 
 ## Execution Protocol
 
-For each stage:
+Execute stages sequentially using Claude Code's Task tool:
 
-1. Get current stage info from getPipelineStatus
-2. Build the stage prompt using buildStagePrompt
-3. Execute using Task tool:
-   \`\`\`
+\`\`\`
+For each stage:
+1. Build the prompt: buildStagePrompt(stage, previousOutput)
+2. Execute with Task:
    Task(
      subagent_type: "oh-my-claudecode:{agent}",
      model: "{model}",
      prompt: "{stage prompt}"
    )
-   \`\`\`
-4. Record result using recordStageResult
-5. Continue to next stage
+3. Capture output for next stage
+4. Continue until all stages complete
+\`\`\`
 
-## Stage Execution
+## Stage Details
 
-Execute stages sequentially, passing output from each stage as input to the next.
-
-If a stage has \`parallel: true\`, execute it concurrently with other parallel stages.
+${pipeline.stages.map((s, i) => `
+### Stage ${i + 1}: ${s.name}
+- **Agent**: ${s.agent}
+- **Model**: ${s.model || 'default'}
+- **Prompt Template**: ${s.promptTemplate.slice(0, 50)}...
+${s.parallel ? '- **Mode**: Parallel (can run with other parallel stages)' : ''}
+`).join('')}
 
 ## Error Handling
 
 If stopOnFailure is true and a stage fails:
-1. Record the failure
+1. Report the error with context
 2. Mark pipeline as failed
-3. Report the error
+3. Suggest retry options
 
 ## Begin
 
-Start by calling startPipeline, then execute the first stage.
+${pipeline.initialInput
+  ? `Initial input:\n${pipeline.initialInput}\n\nStart by executing Stage 1.`
+  : 'Start by executing Stage 1 with the provided input.'}
 `;
 }
 
 /**
+ * Generate a simple stage execution prompt
+ */
+export function generateStagePrompt(
+  stage: PipelineStage,
+  input: string,
+  stageNumber: number,
+  totalStages: number
+): string {
+  return `# Pipeline Stage ${stageNumber}/${totalStages}: ${stage.name}
+
+## Your Task
+
+${buildStagePrompt(stage, input)}
+
+## Context
+
+- You are stage ${stageNumber} of ${totalStages} in a pipeline
+- Your output will be passed to the next stage
+- Focus on your specific task, don't try to do everything
+
+## Output
+
+Provide clear, structured output that the next stage can use.
+`;
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
  * List available presets
  */
-export function listPresets(): Array<{ name: PipelinePreset; description: string }> {
+export function listPresets(): Array<{
+  name: PipelinePreset;
+  description: string;
+  stageCount: number;
+}> {
   return Object.values(PIPELINE_PRESETS).map(p => ({
     name: p.name,
     description: p.description,
+    stageCount: p.stages.length,
   }));
 }
+
+/**
+ * Get parallel stages that can run together
+ */
+export function getParallelGroups(pipeline: Pipeline): PipelineStage[][] {
+  const groups: PipelineStage[][] = [];
+  let currentGroup: PipelineStage[] = [];
+
+  for (const stage of pipeline.stages) {
+    if (stage.parallel) {
+      currentGroup.push(stage);
+    } else {
+      if (currentGroup.length > 0) {
+        groups.push(currentGroup);
+        currentGroup = [];
+      }
+      groups.push([stage]);
+    }
+  }
+
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  return groups;
+}
+
+/**
+ * Estimate pipeline duration
+ */
+export function estimatePipelineDuration(
+  pipeline: Pipeline,
+  avgStageMinutes: number = 5
+): {
+  estimatedMinutes: number;
+  hasParallelStages: boolean;
+} {
+  const parallelGroups = getParallelGroups(pipeline);
+  const hasParallelStages = parallelGroups.some(g => g.length > 1);
+
+  // Each group runs sequentially, parallel stages within a group run together
+  const estimatedMinutes = parallelGroups.length * avgStageMinutes;
+
+  return { estimatedMinutes, hasParallelStages };
+}
+
+/**
+ * Generate a session ID for pipeline execution
+ */
+export function generatePipelineSessionId(): string {
+  return `pipeline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Create pipeline configuration with defaults
+ */
+export function createPipelineConfig(options: Partial<PipelineConfig> = {}): PipelineConfig {
+  return { ...DEFAULT_PIPELINE_CONFIG, ...options };
+}
+
+// ============================================================================
+// DEPRECATED: State Management Functions
+// ============================================================================
+// These functions have been removed in v3.0 following the Context Architect pattern.
+// State management is now handled by Claude Code's native Task API.
+//
+// Removed functions:
+// - initializePipeline() - Use TaskCreate for each stage
+// - startPipeline() - Use Task tool directly
+// - recordStageResult() - Use TaskUpdate
+// - getCurrentStage() - Track in orchestrator prompt
+// - getPipelineStatus() - Use TaskList
+// - pausePipeline() - Not needed with Task-based execution
+// - resumePipeline() - Not needed with Task-based execution
+// - cancelPipeline() - Use TaskStop if needed
+//
+// See: https://docs.anthropic.com/claude-code/task-api
