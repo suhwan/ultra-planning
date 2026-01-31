@@ -1,9 +1,41 @@
-# Ultra Planner v3.1
+# Ultra Planner v3.1.1
 
 > **"실행하지 않는다. 맥락을 설계한다."**
 > (Don't execute, design context.)
 
 Ultra Planner는 Claude Code를 위한 **Context Architect**입니다. **GSD의 계획력 + OMC의 전문성 + Ultra Planner의 오케스트레이션**을 결합한 하이브리드 아키텍처입니다.
+
+## What's New in v3.1.1
+
+### Dynamic Skill Injection
+
+오케스트레이터가 컨텍스트를 분석하여 에이전트 프롬프트에 스킬을 자동 주입합니다:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Orchestrator                                                    │
+│       │                                                          │
+│       ▼                                                          │
+│  ┌─────────────────┐    ┌─────────────────┐                     │
+│  │ Context Analysis │───▶│  Skill Registry │                     │
+│  │ (errors, images, │    │ (.ultraplan/    │                     │
+│  │  TDD mode, etc.) │    │  skills/*.yaml) │                     │
+│  └─────────────────┘    └────────┬────────┘                     │
+│                                  │                               │
+│                                  ▼                               │
+│                     ┌────────────────────┐                       │
+│                     │  Inject Skills to  │                       │
+│                     │  Agent Prompt      │                       │
+│                     └────────────────────┘                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| Trigger | Auto-Injected Skill |
+|---------|---------------------|
+| Build error | `build-fix` |
+| Execution complete | `security-review` |
+| Image input | `vision-analysis` |
+| TDD mode | `tdd-guide` |
 
 ## What's New in v3.1
 
@@ -46,6 +78,7 @@ Ultra Planner는 Claude Code를 위한 **Context Architect**입니다. **GSD의 
 
 | Feature | Description |
 |---------|-------------|
+| **Dynamic Skill Injection** | 컨텍스트 기반 자동 스킬 매칭/주입 (v3.1.1) |
 | **GSD Research** | Context7 지원, 5개 파일 출력, 검증 프로토콜 |
 | **GSD Planning** | 논리적 컨텍스트 기반 Task 분리 |
 | **OMC Agents** | build-fixer, security-reviewer, code-reviewer, tdd-guide, vision |
@@ -62,6 +95,7 @@ Ultra Planner는 Claude Code를 위한 **Context Architect**입니다. **GSD의 
 | Feature | Description |
 |---------|-------------|
 | **Context Architect** | 맥락 수집, 주입, 압축 - Claude Code가 실행 |
+| **Skill Injection** | 컨텍스트 분석 → 스킬 자동 매칭 → 프롬프트 주입 |
 | **GSD Research** | Context7, 신뢰도 계층 (HIGH/MEDIUM/LOW), 5개 구조화 파일 |
 | **GSD Planning** | 논리적 컨텍스트 기반 Task 분리, Goal-backward 방법론 |
 | **Ralplan Verification** | Architect + Critic 합의까지 검증 |
@@ -290,11 +324,12 @@ ultra-planning/
 ├── src/
 │   ├── context/              # Context Architect (v3.0 Core)
 │   ├── hints/                # AI 힌트 (규칙 아님)
+│   ├── skills/               # 스킬 레지스트리 + 인젝터 (v3.1.1)
 │   ├── prompts/              # 프롬프트 생성
 │   ├── notepad/              # Wisdom 축적
 │   ├── orchestration/        # 오케스트레이션
 │   ├── sync/                 # Claude Code 동기화
-│   └── mcp-server.ts         # MCP 서버 (70+ 도구)
+│   └── mcp-server.ts         # MCP 서버 (77+ 도구)
 │
 ├── .claude/
 │   ├── agents/               # 에이전트 정의
@@ -309,14 +344,20 @@ ultra-planning/
 │   │   ├── ultraplan-new-project.md
 │   │   ├── ultraplan-plan-phase.md
 │   │   ├── ultraplan-execute.md
-│   │   ├── ultraplan-discuss-phase.md  # NEW
-│   │   ├── ultraplan-debug.md          # NEW
+│   │   ├── ultraplan-discuss-phase.md
+│   │   ├── ultraplan-debug.md
 │   │   └── fresh-start.md
 │   │
 │   └── skills/
 │
 ├── .ultraplan/
-│   └── config.json           # Model Profiles
+│   ├── config.json           # Model Profiles
+│   └── skills/               # 스킬 정의서 (YAML)
+│       ├── _index.yaml       # 카테고리, 자동 선택 규칙
+│       ├── build-fix.yaml
+│       ├── security-review.yaml
+│       ├── tdd-guide.yaml
+│       └── vision-analysis.yaml
 │
 ├── references/               # 외부 시스템 (git repos)
 │   ├── get-shit-done/        # GSD 에이전트
@@ -427,4 +468,4 @@ MIT
 
 ---
 
-*Made with Ultra Planner v3.1 - Hybrid Integration*
+*Made with Ultra Planner v3.1.1 - Dynamic Skill Injection*

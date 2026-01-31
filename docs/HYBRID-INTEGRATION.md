@@ -1,4 +1,4 @@
-# Ultra Planner v3.1 - Hybrid Integration
+# Ultra Planner v3.1.1 - Hybrid Integration + Skill Injection
 
 > GSD의 계획력 + OMC의 전문성 + Ultra Planner의 오케스트레이션
 
@@ -111,8 +111,13 @@ Ultra Planner v3.1은 세 시스템의 장점을 결합한 하이브리드 아�
         └── ...
 
 .ultraplan/
-├── config.json                     # Model Profiles 추가됨
-└── ...
+├── config.json                     # Model Profiles
+└── skills/                         # 스킬 정의서 (v3.1.1)
+    ├── _index.yaml                 # 카테고리, 자동 선택 규칙
+    ├── build-fix.yaml
+    ├── security-review.yaml
+    ├── tdd-guide.yaml
+    └── vision-analysis.yaml
 
 references/
 ├── get-shit-done/                  # GSD (git repo)
