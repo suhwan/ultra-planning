@@ -6,6 +6,30 @@
  */
 
 import type { OrchestratorPromptConfig, GeneratedPrompt } from './types.js';
+import { formatArtifactReference, formatArtifactCollection } from '../artifacts/index.js';
+
+/**
+ * Format a context section using artifacts when available, falling back to legacy strings
+ */
+function formatContextSection(
+  title: string,
+  legacyContent: string | undefined,
+  artifacts: any[] | undefined,
+  formatFunc?: (item: any) => string
+): string {
+  // Prefer artifact-based approach
+  if (artifacts && artifacts.length > 0 && formatFunc) {
+    const formattedArtifacts = artifacts.map(formatFunc).join('\n\n');
+    return `## ${title}\n\n${formattedArtifacts}`;
+  }
+
+  // Fallback to legacy string content
+  if (legacyContent) {
+    return `## ${title}\n\n${legacyContent}`;
+  }
+
+  return '';
+}
 
 /**
  * Generate orchestrator prompt for managing parallel workers
@@ -140,9 +164,21 @@ mcp__ultra-planner__add_decision(planId, {
 });
 \`\`\`
 
-${config.context?.wisdom ? `## Accumulated Wisdom\n\n${config.context.wisdom}` : ''}
+${formatContextSection(
+  'Accumulated Wisdom',
+  config.context?.wisdom,
+  config.context?.artifactCollections?.filter(c => c.name === 'wisdom'),
+  formatArtifactCollection
+)}
 
-${config.context?.project ? `## Project Context\n\n${config.context.project}` : ''}
+${formatContextSection(
+  'Project Context',
+  config.context?.project,
+  config.context?.artifactCollections?.filter(c => c.name === 'project'),
+  formatArtifactCollection
+)}
+
+${config.context?.artifacts?.length ? `## Available Artifacts\n\n${config.context.artifacts.map(formatArtifactReference).join('\n\n')}` : ''}
 
 ## Begin
 

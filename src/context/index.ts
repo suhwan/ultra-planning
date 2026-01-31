@@ -19,6 +19,12 @@
 
 // Context collection from project files
 export * from './collector.js';
+export type { ProjectContextArtifacts } from './collector.js';
+export {
+  collectProjectContextAsArtifacts,
+  collectPhaseContextAsArtifacts,
+  collectContextAsArtifacts,
+} from './collector.js';
 
 // Context injection into agent prompts
 export * from './injector.js';

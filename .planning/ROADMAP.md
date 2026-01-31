@@ -440,19 +440,19 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 16-01-PLAN.md - 컨텍스트 사용량 모니터링 고도화
-- [ ] 16-02-PLAN.md - 핵심 정보 추출 알고리즘
-- [ ] 16-03-PLAN.md - /fresh-start 개선 및 자동 트리거
+- [ ] 16-01-PLAN.md — AdvancedContextMonitor with 80% auto-compaction threshold
+- [ ] 16-02-PLAN.md — CoreInfo extraction algorithm (<20% token waste)
+- [ ] 16-03-PLAN.md — AutoCompactionManager and /fresh-start command
 
 **Wave Structure:**
-- Wave 1: 16-01 (foundation - monitoring)
-- Wave 2: 16-02 (depends on 16-01)
-- Wave 3: 16-03 (depends on 16-02)
+- Wave 1: 16-01 (foundation - monitoring with 80% threshold)
+- Wave 2: 16-02, 16-03 (parallel - extraction and trigger)
 
 **참조:**
 - Anthropic Context Engineering Guide
 - Mem0 Compaction Strategies
-- `src/context/context-monitor.ts` - 현재 모니터 구현
+- `src/context/monitor.ts` - 현재 모니터 구현
+- `src/context/compactor.ts` - 현재 컴팩터 구현
 
 ## Progress
 
@@ -477,7 +477,7 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | 13. Central Registry | 0/4 | Planned | - |
 | 14. Artifact Pattern | 0/3 | Pending | - |
 | 15. Layered Memory | 0/3 | Pending | - |
-| 16. Context Compaction | 0/3 | Pending | - |
+| 16. Context Compaction | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-01-26*

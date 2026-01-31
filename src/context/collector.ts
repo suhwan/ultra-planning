@@ -9,6 +9,12 @@
 
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import type {
+  ArtifactReference,
+  ArtifactCollection,
+  ArtifactSummary,
+} from '../artifacts/types.js';
+import { createArtifactReference } from '../artifacts/index.js';
 
 // ============================================================================
 // Types
@@ -58,6 +64,17 @@ export interface CollectedContext {
   phase?: PhaseContext;
   task?: TaskContext;
   timestamp: string;
+}
+
+/**
+ * Artifact-based project context (summary-only mode)
+ */
+export interface ProjectContextArtifacts {
+  projectMd?: ArtifactReference;
+  roadmapMd?: ArtifactReference;
+  requirementsMd?: ArtifactReference;
+  planningDir: string;
+  exists: boolean;
 }
 
 // ============================================================================
@@ -393,4 +410,269 @@ export function formatContextSummary(ctx: CollectedContext): string {
   lines.push(`- Collected: ${ctx.timestamp}`);
 
   return lines.join('\n');
+}
+
+// ============================================================================
+// Artifact-Based Collection (Summary Mode)
+// ============================================================================
+
+/**
+ * Collect project-level context as artifact references
+ *
+ * @param planningDir - Path to .planning directory (default: .planning)
+ * @returns ProjectContextArtifacts with artifact references instead of full content
+ *
+ * @example
+ * ```typescript
+ * const ctx = collectProjectContextAsArtifacts();
+ * if (ctx.projectMd) {
+ *   // Use artifact reference - agent loads file on demand
+ * }
+ * ```
+ */
+export function collectProjectContextAsArtifacts(
+  planningDir: string = DEFAULT_PLANNING_DIR
+): ProjectContextArtifacts {
+  const result: ProjectContextArtifacts = {
+    planningDir,
+    exists: existsSync(planningDir),
+  };
+
+  if (!result.exists) {
+    return result;
+  }
+
+  // Create artifact reference for PROJECT.md
+  const projectPath = join(planningDir, 'PROJECT.md');
+  if (existsSync(projectPath)) {
+    const summary: ArtifactSummary = {
+      path: projectPath,
+      type: 'plan',
+      description: 'Project overview and goals',
+    };
+    result.projectMd = createArtifactReference(
+      summary,
+      'Read this file to understand project objectives and scope'
+    );
+  }
+
+  // Create artifact reference for ROADMAP.md (try v2 first, then v1)
+  const roadmapV2Path = join(planningDir, 'ROADMAP-v2.md');
+  const roadmapPath = join(planningDir, 'ROADMAP.md');
+  if (existsSync(roadmapV2Path)) {
+    const summary: ArtifactSummary = {
+      path: roadmapV2Path,
+      type: 'plan',
+      description: 'Project roadmap with phases and milestones',
+    };
+    result.roadmapMd = createArtifactReference(
+      summary,
+      'Read this file to understand the execution plan'
+    );
+  } else if (existsSync(roadmapPath)) {
+    const summary: ArtifactSummary = {
+      path: roadmapPath,
+      type: 'plan',
+      description: 'Project roadmap with phases and milestones',
+    };
+    result.roadmapMd = createArtifactReference(
+      summary,
+      'Read this file to understand the execution plan'
+    );
+  }
+
+  // Create artifact reference for REQUIREMENTS.md
+  const reqPath = join(planningDir, 'REQUIREMENTS.md');
+  if (existsSync(reqPath)) {
+    const summary: ArtifactSummary = {
+      path: reqPath,
+      type: 'plan',
+      description: 'Detailed project requirements and specifications',
+    };
+    result.requirementsMd = createArtifactReference(
+      summary,
+      'Read this file to understand detailed requirements'
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Collect phase-level context as artifact collection
+ *
+ * @param phaseNumber - Phase number (e.g., 1, 2, 3)
+ * @param planningDir - Path to .planning directory
+ * @returns ArtifactCollection with phase research and plans
+ *
+ * @example
+ * ```typescript
+ * const collection = collectPhaseContextAsArtifacts(3);
+ * console.log(collection.name); // "Phase 3: 03-gsd-integration"
+ * ```
+ */
+export function collectPhaseContextAsArtifacts(
+  phaseNumber: number,
+  planningDir: string = DEFAULT_PLANNING_DIR
+): ArtifactCollection | null {
+  const phaseDir = findPhaseDir(phaseNumber, planningDir);
+  const phaseName = phaseDir ? phaseDir.split('/').pop() || '' : '';
+
+  if (!phaseDir) {
+    return null;
+  }
+
+  const artifacts: ArtifactReference[] = [];
+  const paddedNum = String(phaseNumber).padStart(2, '0');
+
+  // Add RESEARCH.md if exists
+  const researchPath = join(phaseDir, `${paddedNum}-RESEARCH.md`);
+  if (existsSync(researchPath)) {
+    const summary: ArtifactSummary = {
+      path: researchPath,
+      type: 'plan',
+      description: `Phase ${phaseNumber} research and analysis`,
+    };
+    artifacts.push(
+      createArtifactReference(
+        summary,
+        'Read for background research and technical decisions'
+      )
+    );
+  }
+
+  // Add all PLAN.md files
+  for (let i = 1; i <= 20; i++) {
+    const planNum = String(i).padStart(2, '0');
+    const planPath = join(phaseDir, `${paddedNum}-${planNum}-PLAN.md`);
+    if (existsSync(planPath)) {
+      const summary: ArtifactSummary = {
+        path: planPath,
+        type: 'plan',
+        description: `Plan ${paddedNum}-${planNum}`,
+      };
+      artifacts.push(
+        createArtifactReference(
+          summary,
+          'Read for specific task implementation details'
+        )
+      );
+    }
+  }
+
+  // Add all SUMMARY.md files
+  for (let i = 1; i <= 20; i++) {
+    const planNum = String(i).padStart(2, '0');
+    const summaryPath = join(phaseDir, `${paddedNum}-${planNum}-SUMMARY.md`);
+    if (existsSync(summaryPath)) {
+      const summary: ArtifactSummary = {
+        path: summaryPath,
+        type: 'plan',
+        description: `Summary ${paddedNum}-${planNum}`,
+      };
+      artifacts.push(
+        createArtifactReference(
+          summary,
+          'Read for completed task summary'
+        )
+      );
+    }
+  }
+
+  return {
+    name: `Phase ${phaseNumber}: ${phaseName}`,
+    description: `All artifacts for phase ${phaseNumber}`,
+    artifacts,
+  };
+}
+
+/**
+ * Collect context as artifacts for a specific plan/task
+ *
+ * @param planId - Plan identifier (e.g., "03-01" or "3-1")
+ * @param planningDir - Path to .planning directory
+ * @returns ArtifactCollection with project, phase, and task artifacts
+ *
+ * @example
+ * ```typescript
+ * const collection = collectContextAsArtifacts('03-02');
+ * // Returns all relevant context as artifact references
+ * ```
+ */
+export function collectContextAsArtifacts(
+  planId: string,
+  planningDir: string = DEFAULT_PLANNING_DIR
+): ArtifactCollection {
+  const artifacts: ArtifactReference[] = [];
+
+  // Parse plan ID
+  const [phaseStr, planStr] = planId.split('-');
+  const phaseNum = parseInt(phaseStr, 10);
+  const planNum = parseInt(planStr, 10);
+  const paddedPhase = String(phaseNum).padStart(2, '0');
+  const paddedPlan = String(planNum).padStart(2, '0');
+
+  // Collect project-level artifacts
+  const projectCtx = collectProjectContextAsArtifacts(planningDir);
+  if (projectCtx.projectMd) artifacts.push(projectCtx.projectMd);
+  if (projectCtx.roadmapMd) artifacts.push(projectCtx.roadmapMd);
+  if (projectCtx.requirementsMd) artifacts.push(projectCtx.requirementsMd);
+
+  // Find phase directory and collect phase artifacts
+  const phaseDir = findPhaseDir(phaseNum, planningDir);
+  if (phaseDir) {
+    // Add phase research
+    const researchPath = join(phaseDir, `${paddedPhase}-RESEARCH.md`);
+    if (existsSync(researchPath)) {
+      const summary: ArtifactSummary = {
+        path: researchPath,
+        type: 'plan',
+        description: `Phase ${phaseNum} research`,
+      };
+      artifacts.push(
+        createArtifactReference(
+          summary,
+          'Read for phase background and context'
+        )
+      );
+    }
+
+    // Add the specific PLAN.md for this task
+    const planPath = join(phaseDir, `${paddedPhase}-${paddedPlan}-PLAN.md`);
+    if (existsSync(planPath)) {
+      const summary: ArtifactSummary = {
+        path: planPath,
+        type: 'plan',
+        description: `Task plan ${paddedPhase}-${paddedPlan}`,
+      };
+      artifacts.push(
+        createArtifactReference(
+          summary,
+          'Read this file for the specific task you are executing'
+        )
+      );
+    }
+
+    // Add SUMMARY.md if it exists
+    const summaryPath = join(phaseDir, `${paddedPhase}-${paddedPlan}-SUMMARY.md`);
+    if (existsSync(summaryPath)) {
+      const summary: ArtifactSummary = {
+        path: summaryPath,
+        type: 'plan',
+        description: `Task summary ${paddedPhase}-${paddedPlan}`,
+      };
+      artifacts.push(
+        createArtifactReference(
+          summary,
+          'Read for completion status and outcomes'
+        )
+      );
+    }
+  }
+
+  return {
+    name: `Context for Plan ${paddedPhase}-${paddedPlan}`,
+    description: `All relevant context artifacts for executing plan ${paddedPhase}-${paddedPlan}`,
+    artifacts,
+  };
 }

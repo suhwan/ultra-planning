@@ -5,6 +5,8 @@
  * Prompts guide Claude Code execution without managing state.
  */
 
+import type { ArtifactReference, ArtifactCollection } from '../artifacts/types.js';
+
 /**
  * Worker configuration for prompt generation
  */
@@ -31,6 +33,26 @@ export interface PromptContext {
   plan?: string;
   /** Additional context */
   extra?: Record<string, string>;
+  /** Artifact references (new, efficient approach) */
+  artifacts?: ArtifactReference[];
+  /** Artifact collections (grouped references) */
+  artifactCollections?: ArtifactCollection[];
+}
+
+/**
+ * Artifact-based prompt context (new approach)
+ */
+export interface ArtifactPromptContext {
+  /** Project-level artifact references */
+  project?: ArtifactCollection;
+  /** Phase-specific artifact references */
+  phase?: ArtifactCollection;
+  /** Wisdom artifact references */
+  wisdom?: ArtifactCollection;
+  /** Plan artifact references */
+  plan?: ArtifactCollection;
+  /** Additional artifact collections */
+  extra?: ArtifactCollection[];
 }
 
 /**
