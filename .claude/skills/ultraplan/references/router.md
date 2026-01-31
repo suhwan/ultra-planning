@@ -6,6 +6,7 @@ The Router is the central orchestrator of Ultra Planner's execution system. It c
 
 **Core Responsibilities:**
 - Parse PLAN.md and build executable task queue
+- **Inject skills into agent prompts based on execution context**
 - Spawn Executor agents with fresh 200k context per task
 - Trigger Architect verification after each execution
 - Manage state transitions (pending -> executing -> verifying -> done/failed)
@@ -206,6 +207,47 @@ depends_on: ["03-01", "03-03"]
 
 ## Agent Spawning Protocol
 
+### Skill Injection (Pre-Spawn)
+
+Before spawning any agent, check if skill injection is needed:
+
+```javascript
+// 1. Build execution context
+executionContext = {
+  agentId: "ultraplan-executor",
+  triggerEvent: getCurrentEvent(),  // "execution_start", "build_error", etc.
+  inputTypes: extractInputTypes(attachments),  // ["image"] if images present
+  errorPatterns: extractErrorPatterns(buildOutput),  // ["error TS2304", ...]
+  flags: { tddMode: config.execution.enableTDD }
+}
+
+// 2. Check if injection needed
+needsInjection = mcp__ultra-planner__needs_skill_injection({
+  agentId: executionContext.agentId,
+  context: executionContext
+})
+
+// 3. If needed, get enhanced prompt
+if (needsInjection) {
+  injection = mcp__ultra-planner__inject_skills({
+    agentId: executionContext.agentId,
+    basePrompt: originalPrompt,
+    context: executionContext
+  })
+  // Use injection.enhancedPrompt and injection.modelOverride
+}
+```
+
+**Trigger Event Detection:**
+
+| Condition | Trigger Event |
+|-----------|---------------|
+| Task execution starting | `execution_start` |
+| Build/type errors in output | `build_error` |
+| All tasks complete | `execution_complete` |
+| Image attachment present | `image_input` |
+| TDD mode enabled | `tdd_mode` |
+
 ### Executor Spawning
 
 When a task transitions to `executing`:
@@ -225,12 +267,27 @@ When a task transitions to `executing`:
      previous_feedback: null  # Or Architect feedback if retry
    ```
 
-2. **Spawn Executor via Task Tool**
+2. **Inject Skills (if applicable)**
+   ```javascript
+   injection = mcp__ultra-planner__inject_skills({
+     agentId: "ultraplan-executor",
+     basePrompt: "Execute task: {task_xml}",
+     context: {
+       triggerEvent: "execution_start",
+       inputTypes: getAttachmentTypes(),
+       errorPatterns: [],
+       flags: { tddMode: config.execution.enableTDD }
+     }
+   })
+   // enhancedPrompt includes skill instructions if matched
+   ```
+
+3. **Spawn Executor via Task Tool**
    ```
    Task(
      subagent_type="ultraplan-executor",
-     model="sonnet",
-     prompt="""
+     model=injection.modelOverride || "sonnet",
+     prompt=injection.enhancedPrompt || """
    You are executing this task:
 
    {task_xml}
@@ -980,5 +1037,6 @@ on_commit_failure:
 
 ---
 
-*Router Protocol Document v1.0.0*
-*Last updated: 2026-01-26*
+*Router Protocol Document v1.1.0*
+*Last updated: 2026-01-31*
+*Added: Skill Injection Protocol*

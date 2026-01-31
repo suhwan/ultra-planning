@@ -16,6 +16,27 @@ Execute a plan file using the Router protocol.
 /ultraplan:execute .planning/phases/03-sequential-execution/03-01-PLAN.md
 ```
 
+## Context Input (from Moltbot Gateway)
+
+When called from Moltbot or other orchestrators, execution context can be passed:
+
+```javascript
+// Moltbot이 전달하는 컨텍스트
+executionContext = {
+  attachments: [
+    { type: "image", path: "/tmp/design.png" }
+  ],
+  priority: "urgent",
+  departments: ["dev", "design"],
+  request: "상세페이지 만들어줘"
+}
+```
+
+This context is used for:
+1. **Skill auto-selection** - e.g., image attachment → `vision-analysis` skill
+2. **Model routing** - urgent priority → higher tier model
+3. **Department routing** - design dept → `designer` agent preference
+
 ## Arguments
 
 | Argument | Description | Example |
@@ -292,11 +313,35 @@ FOR each task in queue (ordered by wave):
 
   1. Check dependencies: Skip if blockedBy tasks incomplete
 
-  2. Spawn Executor:
+  2. Skill Injection (NEW):
+     # Check if skill injection needed
+     needsInjection = mcp__ultra-planner__needs_skill_injection({
+       agentId: "ultraplan-executor",
+       context: executionContext
+     })
+
+     IF needsInjection:
+       injection = mcp__ultra-planner__inject_skills({
+         agentId: "ultraplan-executor",
+         basePrompt: "Execute task: {task_xml}",
+         context: {
+           triggerEvent: currentEvent,      // "build_error", "execution_start", etc.
+           inputTypes: attachmentTypes,      // ["image"] if images present
+           errorPatterns: buildErrors,       // if build failed
+           flags: { tddMode: config.enableTDD }
+         }
+       })
+       executorPrompt = injection.enhancedPrompt
+       modelOverride = injection.modelOverride
+     ELSE:
+       executorPrompt = "Execute task: {task_xml}"
+       modelOverride = null
+
+  3. Spawn Executor:
      Task(
        subagent_type="ultraplan-executor",
-       model="sonnet",
-       prompt="Execute task: {task_xml}"
+       model=modelOverride || "sonnet",
+       prompt=executorPrompt  // 스킬 주입된 프롬프트
      )
 
   3. On Executor success -> Spawn Architect:
@@ -316,18 +361,37 @@ FOR each task in queue (ordered by wave):
      - Retry up to 3 times with feedback
      - If max retries exceeded: prompt user for action
 
-  6. On build/type errors -> Auto-fix with build-fixer:
+  6. On build/type errors -> Skill injection + build-fixer:
+     # 빌드 에러 발생 시 자동 스킬 인젝션
+     injection = mcp__ultra-planner__inject_skills({
+       agentId: "build-fixer",
+       basePrompt: "Fix build errors: {errors}",
+       context: {
+         triggerEvent: "build_error",
+         errorPatterns: extractErrorPatterns(errors)
+       }
+     })
+
      Task(
        subagent_type="build-fixer",
-       model=config.agents.build-fixer,  // from .ultraplan/config.json
-       prompt="Fix build errors: {errors}"
+       model=injection.modelOverride || config.agents.build-fixer,
+       prompt=injection.enhancedPrompt
      )
 
-  7. After all tasks complete -> Security review:
+  7. After all tasks complete -> Skill injection + security review:
+     # 실행 완료 시 자동 스킬 인젝션
+     injection = mcp__ultra-planner__inject_skills({
+       agentId: "security-reviewer",
+       basePrompt: "Review security for: {modified_files}",
+       context: {
+         triggerEvent: "execution_complete"
+       }
+     })
+
      Task(
        subagent_type="security-reviewer",
-       model=config.agents.security-reviewer,
-       prompt="Review security for: {modified_files}"
+       model=injection.modelOverride || config.agents.security-reviewer,
+       prompt=injection.enhancedPrompt
      )
 ```
 
@@ -600,6 +664,97 @@ ${TASK}
 **Usage:**
 ```bash
 /ultraplan:execute 03-01 --tdd
+```
+
+## Skill Injection System
+
+스킬 인젝션은 실행 컨텍스트에 따라 에이전트 프롬프트를 자동으로 강화합니다.
+
+### Trigger Events
+
+| Event | Triggers | Skills Auto-Selected |
+|-------|----------|---------------------|
+| `execution_start` | 실행 시작 시 | (none by default) |
+| `build_error` | 빌드/타입 에러 발생 | `build-fix`, `tdd-guide` (if type error) |
+| `execution_complete` | 모든 태스크 완료 | `security-review` |
+| `image_input` | 이미지 첨부 감지 | `vision-analysis` |
+
+### Context Detection
+
+```javascript
+// 컨텍스트 분석 → 스킬 자동 선택
+analyzeContext(request) {
+  // 1. Attachment types (image, document, etc.)
+  if (attachments.some(a => a.type === "image")) {
+    inputTypes.push("image")
+  }
+
+  // 2. Error patterns
+  if (buildOutput.includes("error TS")) {
+    errorPatterns.push("error TS")
+    triggerEvent = "build_error"
+  }
+
+  // 3. Flags from config
+  if (config.execution.enableTDD) {
+    flags.tddMode = true
+  }
+
+  return { inputTypes, errorPatterns, triggerEvent, flags }
+}
+```
+
+### Injection Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. Context Analysis                                        │
+│     - attachments: [{type: "image"}]                       │
+│     - errors: ["error TS2304"]                              │
+│     - flags: {tddMode: false}                               │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  2. Skill Matching (MCP: match_skills)                      │
+│     → vision-analysis (score: 40, inputTypes match)         │
+│     → build-fix (score: 50, errorPatterns match)            │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  3. Prompt Enhancement (MCP: inject_skills)                 │
+│     basePrompt + skill.prompt_template                      │
+│     → enhancedPrompt with skill instructions                │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  4. Agent Spawn with Enhanced Prompt                        │
+│     Task(subagent_type="executor", prompt=enhancedPrompt)   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### MCP Tools Used
+
+| Tool | Purpose |
+|------|---------|
+| `needs_skill_injection` | 스킬 주입 필요 여부 확인 |
+| `match_skills` | 컨텍스트 기반 스킬 매칭 |
+| `inject_skills` | 에이전트 프롬프트에 스킬 주입 |
+| `get_auto_selected_skills` | 이벤트 기반 자동 선택 스킬 조회 |
+
+### Skill Registry Location
+
+스킬 정의서: `.ultraplan/skills/`
+
+```
+.ultraplan/skills/
+├── _index.yaml         # 카테고리, 자동 선택 규칙
+├── build-fix.yaml      # 빌드 에러 수정
+├── security-review.yaml # 보안 리뷰
+├── tdd-guide.yaml      # TDD 가이드
+└── vision-analysis.yaml # 이미지 분석
 ```
 
 ## Model Profiles
