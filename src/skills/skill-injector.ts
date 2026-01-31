@@ -10,6 +10,7 @@ import {
   type SkillMatch,
   type SkillInjection,
 } from './skill-registry.js';
+import { getRegistryConfig } from '../config/loader.js';
 
 // 컨텍스트 분석 결과
 export interface ContextAnalysis {
@@ -112,7 +113,8 @@ export function analyzeContext(request: InjectionRequest): ContextAnalysis {
  * 스킬 인젝션 수행
  */
 export function injectSkills(request: InjectionRequest): InjectionResult {
-  const registry = getSkillRegistry();
+  const registryConfig = getRegistryConfig();
+  const registry = getSkillRegistry(registryConfig);
   const analysis = analyzeContext(request);
   const { context } = request;
 
@@ -196,7 +198,8 @@ export function injectSpecificSkills(
   agentId: string,
   basePrompt: string
 ): SkillInjection {
-  const registry = getSkillRegistry();
+  const registryConfig = getRegistryConfig();
+  const registry = getSkillRegistry(registryConfig);
 
   const skills = skillIds
     .map((id) => registry.getSkill(id))

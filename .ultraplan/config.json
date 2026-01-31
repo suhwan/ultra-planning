@@ -67,5 +67,13 @@
     "ralplanMaxIterations": 5,
     "architectLeniency": 0.8,
     "requireSecurityPass": true
+  },
+
+  "registry": {
+    "registry": "~/registry",
+    "use": {
+      "agents": ["*"],
+      "skills": ["*"]
+    }
   }
 }

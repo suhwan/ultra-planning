@@ -8,6 +8,12 @@
 import matter from 'gray-matter';
 import * as fs from 'fs';
 import * as path from 'path';
+import type { RegistryConfig } from '../registry/types.js';
+import {
+  getSkillSources,
+  loadSkillsFromSources,
+  loadSkillIndex,
+} from '../registry/skill-loader.js';
 
 // Simple YAML parser using gray-matter's engine
 function parseYaml(content: string): unknown {
@@ -106,11 +112,22 @@ export class SkillRegistry {
   private skills: Map<string, SkillDefinition> = new Map();
   private index: SkillIndex | null = null;
   private skillsDir: string;
+  private config: RegistryConfig | undefined;
 
-  constructor(skillsDir?: string) {
-    this.skillsDir =
-      skillsDir ||
-      path.join(process.cwd(), '.ultraplan/skills');
+  constructor(skillsDirOrConfig?: string | RegistryConfig) {
+    if (typeof skillsDirOrConfig === 'string') {
+      // Legacy mode: single directory
+      this.skillsDir = skillsDirOrConfig;
+      this.config = undefined;
+    } else if (skillsDirOrConfig) {
+      // New mode: registry config
+      this.config = skillsDirOrConfig;
+      this.skillsDir = path.join(process.cwd(), '.ultraplan/skills');
+    } else {
+      // Default: local skills only
+      this.skillsDir = path.join(process.cwd(), '.ultraplan/skills');
+      this.config = undefined;
+    }
     this.loadSkills();
   }
 
@@ -118,6 +135,13 @@ export class SkillRegistry {
    * 모든 스킬 YAML 파일 로드
    */
   private loadSkills(): void {
+    // Use multi-source loading if config is provided
+    if (this.config) {
+      this.loadFromSources();
+      return;
+    }
+
+    // Legacy single-directory mode
     if (!fs.existsSync(this.skillsDir)) {
       console.warn(`Skills directory not found: ${this.skillsDir}`);
       return;
@@ -143,6 +167,88 @@ export class SkillRegistry {
           console.warn(`Failed to load skill: ${file}`, error);
         }
       }
+    }
+  }
+
+  /**
+   * Load skills from multiple registry sources
+   * Global registry loaded first, local overrides
+   */
+  private loadFromSources(): void {
+    const sources = getSkillSources(this.config);
+
+    if (sources.length === 0) {
+      console.warn('No skill sources found');
+      return;
+    }
+
+    // Load skills with selection patterns
+    const patterns = this.config?.use?.skills;
+    this.skills = loadSkillsFromSources(sources, patterns);
+
+    // Load and merge indexes from all sources
+    for (const source of sources) {
+      const index = loadSkillIndex(source.path);
+      if (index && !this.index) {
+        this.index = index as SkillIndex;
+      } else if (index && this.index) {
+        // Merge: combine categories and relationships
+        this.mergeIndex(index as SkillIndex);
+      }
+    }
+
+    console.log(`Loaded ${this.skills.size} skills from ${sources.length} source(s)`);
+  }
+
+  /**
+   * Merge skill index from another source.
+   *
+   * NOTE: This is "last-wins" merging. If both global and local define
+   * the same category key, local completely replaces global's category.
+   * This is intentional - local overrides should fully replace global
+   * definitions for the same key, not merge them additively.
+   *
+   * Example:
+   * - Global defines categories: { planning: {...}, analysis: {...} }
+   * - Local defines categories: { planning: {...} }
+   * - Result: planning is local's version, analysis is global's version
+   */
+  private mergeIndex(newIndex: SkillIndex): void {
+    if (!this.index) {
+      this.index = newIndex;
+      return;
+    }
+
+    // Merge categories (last-wins for same key)
+    if (newIndex.categories) {
+      this.index.categories = {
+        ...this.index.categories,
+        ...newIndex.categories,
+      };
+    }
+
+    // Merge relationships (last-wins for same key)
+    if (newIndex.relationships) {
+      this.index.relationships = {
+        ...this.index.relationships,
+        ...newIndex.relationships,
+      };
+    }
+
+    // Merge auto_selection (last-wins for same key)
+    if (newIndex.auto_selection) {
+      this.index.auto_selection = {
+        ...this.index.auto_selection,
+        ...newIndex.auto_selection,
+      };
+    }
+
+    // Merge agent_defaults (last-wins for same key)
+    if (newIndex.agent_defaults) {
+      this.index.agent_defaults = {
+        ...this.index.agent_defaults,
+        ...newIndex.agent_defaults,
+      };
     }
   }
 
@@ -402,17 +508,56 @@ ${skillSections}`;
   }
 }
 
-// 싱글톤 인스턴스
+// Singleton instance and config tracking
 let registryInstance: SkillRegistry | null = null;
+let registryInstanceConfig: string | RegistryConfig | undefined = undefined;
 
-export function getSkillRegistry(skillsDir?: string): SkillRegistry {
+/**
+ * Serialize config for comparison
+ */
+function serializeConfig(config: string | RegistryConfig | undefined): string {
+  if (config === undefined) return 'undefined';
+  if (typeof config === 'string') return `string:${config}`;
+  return JSON.stringify(config);
+}
+
+/**
+ * Get singleton SkillRegistry instance
+ *
+ * @param skillsDirOrConfig - Skills directory path or RegistryConfig
+ * @returns Singleton SkillRegistry instance
+ * @throws Error if called with different config than existing instance
+ */
+export function getSkillRegistry(skillsDirOrConfig?: string | RegistryConfig): SkillRegistry {
   if (!registryInstance) {
-    registryInstance = new SkillRegistry(skillsDir);
+    registryInstance = new SkillRegistry(skillsDirOrConfig);
+    registryInstanceConfig = skillsDirOrConfig;
+    return registryInstance;
   }
+
+  // Check for config mismatch
+  const existingConfigStr = serializeConfig(registryInstanceConfig);
+  const newConfigStr = serializeConfig(skillsDirOrConfig);
+
+  if (existingConfigStr !== newConfigStr) {
+    throw new Error(
+      `SkillRegistry singleton config mismatch. ` +
+      `Existing config: ${existingConfigStr}, ` +
+      `New config: ${newConfigStr}. ` +
+      `Call resetSkillRegistry() first to reinitialize with new config.`
+    );
+  }
+
   return registryInstance;
 }
 
-// 레지스트리 리셋 (테스트용)
+/**
+ * Reset singleton registry instance
+ *
+ * Call this to clear the cached instance before reinitializing with new config.
+ * Useful for testing or when config needs to change at runtime.
+ */
 export function resetSkillRegistry(): void {
   registryInstance = null;
+  registryInstanceConfig = undefined;
 }

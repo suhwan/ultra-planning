@@ -30,7 +30,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 12: Notepad 학습 시스템** - 서브에이전트 학습 누적
 
 ### v4.0 - Context Architect
-- [ ] **Phase 13: Central Registry** - 에이전트/스킬 중앙 저장소
+- [x] **Phase 13: Central Registry** - 에이전트/스킬 중앙 저장소
 - [ ] **Phase 14: Artifact Pattern** - JIT 로딩으로 토큰 효율화
 - [ ] **Phase 15: Layered Memory** - Working/Short/Long-term 메모리 분리
 - [ ] **Phase 16: Context Compaction** - 자동 압축 고도화
@@ -368,13 +368,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 **Plans**: 4 plans
 
 Plans:
-- [ ] 13-01-PLAN.md - Registry 디렉토리 구조 및 스키마 정의
-- [ ] 13-02-PLAN.md - SkillRegistry 수정 (registry 경로 지원)
-- [ ] 13-03-PLAN.md - AgentRegistry 구현 (에이전트 메타데이터 관리)
-- [ ] 13-04-PLAN.md - config.json 확장 및 프로젝트별 선택 로직
+- [ ] 13-01-PLAN.md — Registry types and path utilities (RegistrySource, expandTilde, resolveRegistryPath)
+- [ ] 13-02-PLAN.md — SkillRegistry multi-source loading (skill-loader, priority ordering, pattern filtering)
+- [ ] 13-03-PLAN.md — AgentRegistry implementation (AgentDefinition, agent-loader, persona support)
+- [ ] 13-04-PLAN.md — Config extension and injection integration (ProjectConfig, getRegistryConfig)
 
 **Wave Structure:**
-- Wave 1: 13-01 (foundation - schema)
+- Wave 1: 13-01 (foundation - types, paths)
 - Wave 2: 13-02, 13-03 (parallel - skill/agent registry)
 - Wave 3: 13-04 (depends on 13-02, 13-03)
 
@@ -474,7 +474,7 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | 11. Tasks API 실제 연동 | 3/3 | Complete | 2026-01-27 |
 | 12. Notepad 학습 시스템 | 3/3 | Complete | 2026-01-27 |
 | **v4.0** | | | |
-| 13. Central Registry | 0/4 | Pending | - |
+| 13. Central Registry | 0/4 | Planned | - |
 | 14. Artifact Pattern | 0/3 | Pending | - |
 | 15. Layered Memory | 0/3 | Pending | - |
 | 16. Context Compaction | 0/3 | Pending | - |
