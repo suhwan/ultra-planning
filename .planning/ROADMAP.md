@@ -31,7 +31,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 
 ### v4.0 - Context Architect
 - [x] **Phase 13: Central Registry** - 에이전트/스킬 중앙 저장소
-- [ ] **Phase 14: Artifact Pattern** - JIT 로딩으로 토큰 효율화
+- [x] **Phase 14: Artifact Pattern** - JIT 로딩으로 토큰 효율화
 - [ ] **Phase 15: Layered Memory** - Working/Short/Long-term 메모리 분리
 - [ ] **Phase 16: Context Compaction** - 자동 압축 고도화
 
@@ -474,8 +474,8 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | 11. Tasks API 실제 연동 | 3/3 | Complete | 2026-01-27 |
 | 12. Notepad 학습 시스템 | 3/3 | Complete | 2026-01-27 |
 | **v4.0** | | | |
-| 13. Central Registry | 0/4 | Planned | - |
-| 14. Artifact Pattern | 0/3 | Pending | - |
+| 13. Central Registry | 4/4 | Complete | 2026-02-01 |
+| 14. Artifact Pattern | 3/3 | Complete | 2026-02-01 |
 | 15. Layered Memory | 0/3 | Pending | - |
 | 16. Context Compaction | 0/3 | Planned | - |
 
