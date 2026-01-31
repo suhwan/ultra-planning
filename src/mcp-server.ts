@@ -16,8 +16,8 @@ import {
 // Import our library functions
 import { parsePlanForSync, extractTaskMappings } from './sync/plan-parser.js';
 import { buildDependencyMap, getExecutionOrder } from './sync/dependency-map.js';
-import { generateTaskCreations } from './tasks/dependencies.js';
-import { calculateProgress, formatProgress } from './tasks/progress.js';
+import { generateTaskCreations } from './sync/task-creation.js';
+import { calculateProgress, formatProgress } from './sync/progress.js';
 import {
   addLearning,
   addDecision,

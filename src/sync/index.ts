@@ -88,3 +88,29 @@ export {
   markTaskInProgress,
   updateContentCheckbox,
 } from './status-sync.js';
+
+// ============================================================================
+// Task Creation
+// ============================================================================
+
+export type { TaskCreateInvocation } from './task-creation.js';
+
+export {
+  generateTaskCreations,
+  groupByWave,
+} from './task-creation.js';
+
+// ============================================================================
+// Progress Tracking
+// ============================================================================
+
+export type { TaskEntry, ProgressStats } from './progress.js';
+
+export {
+  calculateProgress,
+  formatProgress,
+  formatProgressBar,
+  isAllComplete,
+  getReadyTasks,
+  getActiveTasks,
+} from './progress.js';
