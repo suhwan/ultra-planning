@@ -1,8 +1,10 @@
-# Roadmap: Ultra Planner v2
+# Roadmap: Ultra Planner v4
 
 ## Overview
 
 GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실행 오케스트레이션 시스템.
+
+**v4.0 추가 목표:** Context Architect - 실행하는 에이전트가 아닌, 맥락을 설계하는 아키텍트
 
 **원칙:**
 - 최고 효율 선택 (구현 필요해도 OK)
@@ -26,6 +28,12 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 10: 컨텍스트 모니터** - 토큰 추적, 중간 반환 패턴
 - [x] **Phase 11: Tasks API 실제 연동** - TaskCreate/Update 실제 호출
 - [x] **Phase 12: Notepad 학습 시스템** - 서브에이전트 학습 누적
+
+### v4.0 - Context Architect
+- [ ] **Phase 13: Central Registry** - 에이전트/스킬 중앙 저장소
+- [ ] **Phase 14: Artifact Pattern** - JIT 로딩으로 토큰 효율화
+- [ ] **Phase 15: Layered Memory** - Working/Short/Long-term 메모리 분리
+- [ ] **Phase 16: Context Compaction** - 자동 압축 고도화
 
 ## Phase Details
 
@@ -349,7 +357,129 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 11. Tasks API 실제 연동 | 3/3 | Complete | 2026-01-27 |
 | 12. Notepad 학습 시스템 | 3/3 | Complete | 2026-01-27 |
 
+### Phase 13: Central Registry
+**Goal**: 에이전트/스킬 중앙 저장소로 크로스 프로젝트 공유 지원
+**Depends on**: Phase 12
+**Success Criteria** (what must be TRUE):
+  1. Registry 디렉토리 구조 생성 (`~/registry/agents/`, `~/registry/skills/`)
+  2. SkillRegistry가 registry 경로에서 로드
+  3. 프로젝트 config.json에서 사용할 에이전트/스킬 선택 가능
+  4. adsaprk-ceo에서 ThinkTank 스킬 인젝션 작동
+**Plans**: 4 plans
+
+Plans:
+- [ ] 13-01-PLAN.md - Registry 디렉토리 구조 및 스키마 정의
+- [ ] 13-02-PLAN.md - SkillRegistry 수정 (registry 경로 지원)
+- [ ] 13-03-PLAN.md - AgentRegistry 구현 (에이전트 메타데이터 관리)
+- [ ] 13-04-PLAN.md - config.json 확장 및 프로젝트별 선택 로직
+
+**Wave Structure:**
+- Wave 1: 13-01 (foundation - schema)
+- Wave 2: 13-02, 13-03 (parallel - skill/agent registry)
+- Wave 3: 13-04 (depends on 13-02, 13-03)
+
+**참조:**
+- `.planning/v4.0-VISION.md` - Central Registry 설계
+- `src/skills/skill-registry.ts` - 현재 SkillRegistry 구현
+
+### Phase 14: Artifact Pattern
+**Goal**: JIT 로딩으로 토큰 낭비 제거 (Context Dumping → Artifact Reference)
+**Depends on**: Phase 13
+**Success Criteria** (what must be TRUE):
+  1. generate_worker_prompt가 파일 경로만 제공 (내용 X)
+  2. collect_project_context가 요약만 반환
+  3. 에이전트가 필요시 Read 도구로 직접 조회
+  4. 토큰 사용량 50% 이상 감소
+**Plans**: 3 plans
+
+Plans:
+- [ ] 14-01-PLAN.md - Artifact Reference 타입 및 유틸리티
+- [ ] 14-02-PLAN.md - generate_worker_prompt 수정 (경로만 제공)
+- [ ] 14-03-PLAN.md - collect_project_context 수정 (요약 모드)
+
+**Wave Structure:**
+- Wave 1: 14-01 (foundation - types)
+- Wave 2: 14-02, 14-03 (parallel - prompt/context 수정)
+
+**참조:**
+- Google ADK Artifact Pattern
+- `.planning/v4.0-VISION.md` - Artifact Pattern 설계
+
+### Phase 15: Layered Memory
+**Goal**: Working/Short-term/Long-term 메모리 계층화
+**Depends on**: Phase 14
+**Success Criteria** (what must be TRUE):
+  1. Working Memory: 현재 PLAN.md 태스크 (휘발성)
+  2. Short-term Memory: STATE.md + 세션 기록 (프로젝트 수명)
+  3. Long-term Memory: Wisdom (learnings, decisions, issues) 영속
+  4. 세션 간 Wisdom 자동 전달
+**Plans**: 3 plans
+
+Plans:
+- [ ] 15-01-PLAN.md - Memory 계층 타입 정의 및 .planning/wisdom/ 구조
+- [ ] 15-02-PLAN.md - Wisdom 자동 수집 로직 (에이전트 결과 분석)
+- [ ] 15-03-PLAN.md - 세션 간 Wisdom 로드/주입
+
+**Wave Structure:**
+- Wave 1: 15-01 (foundation - types, structure)
+- Wave 2: 15-02, 15-03 (parallel - collect/inject)
+
+**참조:**
+- Google ADK Memory Architecture
+- Mem0 Compaction Strategies
+- `src/notepad/` - 현재 Notepad 구현
+
+### Phase 16: Context Compaction
+**Goal**: 자동 컨텍스트 압축으로 장기 세션 안정성 확보
+**Depends on**: Phase 15
+**Success Criteria** (what must be TRUE):
+  1. 컨텍스트 사용량 80% 도달 시 자동 압축 트리거
+  2. 핵심 정보 추출 (아키텍처 결정, 미해결 이슈, 현재 진행)
+  3. 압축된 컨텍스트로 /fresh-start 자동 실행
+  4. 장기 세션 (8시간+) 안정적 지원
+**Plans**: 3 plans
+
+Plans:
+- [ ] 16-01-PLAN.md - 컨텍스트 사용량 모니터링 고도화
+- [ ] 16-02-PLAN.md - 핵심 정보 추출 알고리즘
+- [ ] 16-03-PLAN.md - /fresh-start 개선 및 자동 트리거
+
+**Wave Structure:**
+- Wave 1: 16-01 (foundation - monitoring)
+- Wave 2: 16-02 (depends on 16-01)
+- Wave 3: 16-03 (depends on 16-02)
+
+**참조:**
+- Anthropic Context Engineering Guide
+- Mem0 Compaction Strategies
+- `src/context/context-monitor.ts` - 현재 모니터 구현
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 14 → 15 → 16 (v4)
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. 프로젝트 구조 | 3/3 | Complete | 2026-01-26 |
+| 2. 상태 관리 | 4/4 | Complete | 2026-01-26 |
+| 3. GSD 통합 | 4/4 | Complete | 2026-01-26 |
+| 4. OMC 통합 | 5/5 | Complete | 2026-01-26 |
+| 5. OpenCode 재구현 | 4/4 | Complete | 2026-01-27 |
+| 6. Claude Tasks 동기화 | 3/3 | Complete | 2026-01-27 |
+| 7. CLI/슬래시 커맨드 | 3/3 | Complete | 2026-01-27 |
+| 8. 통합 테스트 | 2/2 | Complete | 2026-01-27 |
+| 9. 코드 품질 자동화 | 4/4 | Complete | 2026-01-27 |
+| 10. 컨텍스트 모니터 | 4/4 | Complete | 2026-01-27 |
+| 11. Tasks API 실제 연동 | 3/3 | Complete | 2026-01-27 |
+| 12. Notepad 학습 시스템 | 3/3 | Complete | 2026-01-27 |
+| **v4.0** | | | |
+| 13. Central Registry | 0/4 | Pending | - |
+| 14. Artifact Pattern | 0/3 | Pending | - |
+| 15. Layered Memory | 0/3 | Pending | - |
+| 16. Context Compaction | 0/3 | Pending | - |
+
 ---
 *Roadmap created: 2026-01-26*
-*Version: v2 (실제 구현용)*
-*Total: 12 Phases, 42 Plans*
+*Version: v4 (Context Architect)*
+*Total: 16 Phases, 55 Plans*
