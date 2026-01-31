@@ -122,39 +122,40 @@ import {
   getAvailableRollbackTargets,
 } from './recovery/rollback.js';
 
-// Import swarm functions
+// Import swarm functions (simplified - prompt generation only)
 import {
-  initializeSwarm,
-  getAvailableTasks,
-  claimTask,
-  claimAnyTask,
-  completeTask,
-  releaseTask,
-  getSwarmStatus,
-  getSwarmState,
-  startSwarm,
-  pauseSwarm,
-  cleanupStaleWorkers,
   generateWorkerPrompt,
   generateOrchestratorPrompt,
 } from './orchestration/swarm/index.js';
 
-// Import pipeline functions
+// Import pipeline functions (simplified - preset and parsing only)
 import {
   createPipelineFromPreset,
-  createCustomPipeline,
   parsePipelineString,
-  initializePipeline,
   buildStagePrompt,
-  recordStageResult,
-  getCurrentStage,
-  startPipeline,
-  pausePipeline,
-  getPipelineStatus,
-  getPipelineState,
   listPresets as listPipelinePresets,
   generatePipelineOrchestratorPrompt,
+  generatePipelineSessionId,
 } from './orchestration/pipeline/index.js';
+
+// Import hints functions (v3.0 - Context Architect)
+import {
+  suggestComplexity,
+  suggestRoute,
+  getTaskHints,
+} from './hints/index.js';
+
+// Import context functions (v3.0 - Context Architect)
+import {
+  collectProjectContext,
+  collectPhaseContext,
+  collectTaskContext,
+  collectContext,
+  compactContext,
+  saveContextSnapshot,
+  restoreContext,
+  formatCompactedContext,
+} from './context/index.js';
 
 // Import delegation functions
 import {
@@ -995,107 +996,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
 
-      // === Swarm Management ===
-      {
-        name: 'initialize_swarm',
-        description: 'Initialize a swarm of parallel workers from a plan. Returns session ID and worker info.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            planPath: { type: 'string', description: 'Path to PLAN.md file' },
-            maxWorkers: { type: 'number', description: 'Maximum workers (default: 5)' },
-            claimRetries: { type: 'number', description: 'Retries on claim failure (default: 3)' },
-            workerTimeoutMs: { type: 'number', description: 'Worker timeout in ms (default: 300000)' },
-          },
-          required: ['planPath'],
-        },
-      },
-      {
-        name: 'get_swarm_available_tasks',
-        description: 'Get tasks available for claiming in a swarm.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Swarm session ID' },
-          },
-          required: ['sessionId'],
-        },
-      },
-      {
-        name: 'claim_swarm_task',
-        description: 'Claim a task for a worker. Returns null if task already claimed (race condition).',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Swarm session ID' },
-            workerId: { type: 'string', description: 'Worker ID' },
-            taskId: { type: 'string', description: 'Task ID to claim' },
-          },
-          required: ['sessionId', 'workerId', 'taskId'],
-        },
-      },
-      {
-        name: 'claim_any_swarm_task',
-        description: 'Claim any available task for a worker.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Swarm session ID' },
-            workerId: { type: 'string', description: 'Worker ID' },
-          },
-          required: ['sessionId', 'workerId'],
-        },
-      },
-      {
-        name: 'complete_swarm_task',
-        description: 'Mark a swarm task as completed or failed.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Swarm session ID' },
-            workerId: { type: 'string', description: 'Worker ID' },
-            taskId: { type: 'string', description: 'Task ID' },
-            success: { type: 'boolean', description: 'Whether task succeeded' },
-            output: { type: 'string', description: 'Task output/summary' },
-            filesModified: { type: 'array', items: { type: 'string' }, description: 'Files modified' },
-            error: { type: 'string', description: 'Error if failed' },
-          },
-          required: ['sessionId', 'workerId', 'taskId', 'success'],
-        },
-      },
-      {
-        name: 'get_swarm_status',
-        description: 'Get swarm status and statistics.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Swarm session ID' },
-          },
-          required: ['sessionId'],
-        },
-      },
-      {
-        name: 'start_swarm',
-        description: 'Start swarm execution.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Swarm session ID' },
-          },
-          required: ['sessionId'],
-        },
-      },
-      {
-        name: 'cleanup_stale_workers',
-        description: 'Release tasks from timed-out workers.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Swarm session ID' },
-          },
-          required: ['sessionId'],
-        },
-      },
+      // === Swarm Prompts (v3.0 - prompt generation only, state via Claude Code Task API) ===
       {
         name: 'generate_worker_prompt',
         description: 'Generate prompt for a swarm worker agent.',
@@ -1126,7 +1027,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
 
-      // === Pipeline Management ===
+      // === Pipeline (v3.0 - preset/parsing only, state via Claude Code Task API) ===
       {
         name: 'create_pipeline_preset',
         description: 'Create a pipeline from a built-in preset (review, implement, debug, research, refactor, security).',
@@ -1156,72 +1057,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
-        name: 'initialize_pipeline',
-        description: 'Initialize a pipeline for execution. Returns session ID.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            preset: {
-              type: 'string',
-              enum: ['review', 'implement', 'debug', 'research', 'refactor', 'security'],
-              description: 'Use a preset pipeline',
-            },
-            pipelineStr: { type: 'string', description: 'Or define custom pipeline string' },
-            initialInput: { type: 'string', description: 'Initial input for first stage' },
-          },
-          required: [],
-        },
-      },
-      {
-        name: 'get_current_pipeline_stage',
-        description: 'Get the current stage to execute and its input.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Pipeline session ID' },
-          },
-          required: ['sessionId'],
-        },
-      },
-      {
-        name: 'record_pipeline_stage_result',
-        description: 'Record stage completion result.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Pipeline session ID' },
-            stageName: { type: 'string', description: 'Stage name' },
-            success: { type: 'boolean', description: 'Whether stage succeeded' },
-            output: { type: 'string', description: 'Stage output (passed to next stage)' },
-            error: { type: 'string', description: 'Error if failed' },
-            executionTimeMs: { type: 'number', description: 'Execution time in ms' },
-          },
-          required: ['sessionId', 'stageName', 'success', 'executionTimeMs'],
-        },
-      },
-      {
-        name: 'start_pipeline',
-        description: 'Start pipeline execution.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Pipeline session ID' },
-          },
-          required: ['sessionId'],
-        },
-      },
-      {
-        name: 'get_pipeline_status',
-        description: 'Get pipeline status and stage results.',
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            sessionId: { type: 'string', description: 'Pipeline session ID' },
-          },
-          required: ['sessionId'],
-        },
-      },
-      {
         name: 'list_pipeline_presets',
         description: 'List available pipeline presets.',
         inputSchema: {
@@ -1236,9 +1071,112 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object' as const,
           properties: {
-            sessionId: { type: 'string', description: 'Pipeline session ID' },
+            pipeline: { type: 'object', description: 'Pipeline object from create_pipeline_preset or parse_pipeline_string' },
           },
-          required: ['sessionId'],
+          required: ['pipeline'],
+        },
+      },
+
+      // === Context Collection (v3.0) ===
+      {
+        name: 'collect_project_context',
+        description: 'Collect project context from PROJECT.md, ROADMAP.md, REQUIREMENTS.md.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planningDir: { type: 'string', description: 'Path to .planning directory (default: .planning)' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'collect_phase_context',
+        description: 'Collect phase context including research and plans.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            phaseNumber: { type: 'number', description: 'Phase number (e.g., 3)' },
+            planningDir: { type: 'string', description: 'Path to .planning directory' },
+          },
+          required: ['phaseNumber'],
+        },
+      },
+      {
+        name: 'collect_task_context',
+        description: 'Collect task context from a specific PLAN.md.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planId: { type: 'string', description: 'Plan identifier (e.g., "03-01")' },
+            planningDir: { type: 'string', description: 'Path to .planning directory' },
+          },
+          required: ['planId'],
+        },
+      },
+      {
+        name: 'compress_context',
+        description: 'Compress context into a minimal summary for fresh-start scenarios.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planId: { type: 'string', description: 'Current plan ID' },
+            planningDir: { type: 'string', description: 'Path to .planning directory' },
+            saveSnapshot: { type: 'boolean', description: 'Whether to save snapshot to disk' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'restore_context',
+        description: 'Restore context from a saved snapshot.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            snapshotId: { type: 'string', description: 'Snapshot ID or "latest"' },
+          },
+          required: [],
+        },
+      },
+
+      // === Hints (v3.0 - suggestions, AI decides) ===
+      {
+        name: 'suggest_complexity',
+        description: 'Get complexity hint for a task. Returns isHint: true with suggested level, model, and confidence. AI makes final decision.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: { type: 'string', description: 'Task description' },
+            files: { type: 'array', items: { type: 'string' }, description: 'Files to be modified' },
+            dependencies: { type: 'array', items: { type: 'string' }, description: 'Task dependencies' },
+          },
+          required: ['taskDescription'],
+        },
+      },
+      {
+        name: 'suggest_route',
+        description: 'Get routing hint for a task. Returns isHint: true with suggested agent, model, and confidence. AI makes final decision.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: { type: 'string', description: 'Task description' },
+            isUI: { type: 'boolean', description: 'Context: is UI work' },
+            isDocumentation: { type: 'boolean', description: 'Context: is documentation' },
+            isDebugging: { type: 'boolean', description: 'Context: is debugging' },
+            isArchitecture: { type: 'boolean', description: 'Context: is architecture' },
+          },
+          required: ['taskDescription'],
+        },
+      },
+      {
+        name: 'get_task_hints',
+        description: 'Get all hints (complexity, routing, model) for a task in one call.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: { type: 'string', description: 'Task description' },
+            files: { type: 'array', items: { type: 'string' }, description: 'Files to be modified' },
+          },
+          required: ['taskDescription'],
         },
       },
 
@@ -2002,123 +1940,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      // === Swarm Management ===
-      case 'initialize_swarm': {
-        const state = await initializeSwarm(
-          safeArgs.planPath as string,
-          {
-            maxWorkers: safeArgs.maxWorkers as number | undefined,
-            claimRetries: safeArgs.claimRetries as number | undefined,
-            workerTimeoutMs: safeArgs.workerTimeoutMs as number | undefined,
-          }
-        );
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({
-              sessionId: state.sessionId,
-              workers: state.workers.map(w => ({ id: w.worker.id, name: w.worker.name })),
-              taskCount: state.tasks.length,
-              status: state.status,
-            }, null, 2),
-          }],
-        };
-      }
-
-      case 'get_swarm_available_tasks': {
-        const tasks = getAvailableTasks(safeArgs.sessionId as string);
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({ count: tasks.length, tasks }, null, 2),
-          }],
-        };
-      }
-
-      case 'claim_swarm_task': {
-        const task = claimTask(
-          safeArgs.sessionId as string,
-          safeArgs.workerId as string,
-          safeArgs.taskId as string
-        );
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: task !== null,
-              task,
-            }, null, 2),
-          }],
-        };
-      }
-
-      case 'claim_any_swarm_task': {
-        const task = claimAnyTask(
-          safeArgs.sessionId as string,
-          safeArgs.workerId as string
-        );
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: task !== null,
-              task,
-            }, null, 2),
-          }],
-        };
-      }
-
-      case 'complete_swarm_task': {
-        const success = completeTask(
-          safeArgs.sessionId as string,
-          safeArgs.workerId as string,
-          safeArgs.taskId as string,
-          {
-            success: safeArgs.success as boolean,
-            output: safeArgs.output as string | undefined,
-            filesModified: safeArgs.filesModified as string[] | undefined,
-            error: safeArgs.error as string | undefined,
-            executionTimeMs: Date.now(), // Placeholder, ideally tracked by worker
-          }
-        );
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({ success }),
-          }],
-        };
-      }
-
-      case 'get_swarm_status': {
-        const statusResult = getSwarmStatus(safeArgs.sessionId as string);
-        if (!statusResult) {
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Swarm not found' }) }],
-            isError: true,
-          };
-        }
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(statusResult, null, 2) }],
-        };
-      }
-
-      case 'start_swarm': {
-        const started = startSwarm(safeArgs.sessionId as string);
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ success: started }) }],
-        };
-      }
-
-      case 'cleanup_stale_workers': {
-        const releasedTasks = cleanupStaleWorkers(safeArgs.sessionId as string);
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({ releasedCount: releasedTasks.length, releasedTasks }),
-          }],
-        };
-      }
-
+      // === Swarm Prompts (v3.0 - prompt generation only) ===
       case 'generate_worker_prompt': {
         const prompt = generateWorkerPrompt({
           worker: {
@@ -2147,7 +1969,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      // === Pipeline Management ===
+      // === Pipeline (v3.0 - preset/parsing only) ===
       case 'create_pipeline_preset': {
         const pipeline = createPipelineFromPreset(
           safeArgs.preset as 'review' | 'implement' | 'debug' | 'research' | 'refactor' | 'security',
@@ -2168,106 +1990,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case 'initialize_pipeline': {
-        let pipeline;
-        if (safeArgs.preset) {
-          pipeline = createPipelineFromPreset(
-            safeArgs.preset as 'review' | 'implement' | 'debug' | 'research' | 'refactor' | 'security',
-            safeArgs.initialInput as string | undefined
-          );
-        } else if (safeArgs.pipelineStr) {
-          pipeline = parsePipelineString(safeArgs.pipelineStr as string);
-          if (safeArgs.initialInput) {
-            pipeline.initialInput = safeArgs.initialInput as string;
-          }
-        } else {
-          throw new Error('Must provide either preset or pipelineStr');
-        }
-        const state = initializePipeline(pipeline);
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({
-              sessionId: state.sessionId,
-              status: state.status,
-              stageCount: state.pipeline.stages.length,
-              stages: state.pipeline.stages.map(s => s.name),
-            }, null, 2),
-          }],
-        };
-      }
-
-      case 'get_current_pipeline_stage': {
-        const stageInfo = getCurrentStage(safeArgs.sessionId as string);
-        if (!stageInfo) {
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'No current stage or pipeline not found' }) }],
-            isError: true,
-          };
-        }
-        const prompt = buildStagePrompt(stageInfo.stage, stageInfo.input);
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({
-              stage: stageInfo.stage,
-              input: stageInfo.input,
-              prompt,
-            }, null, 2),
-          }],
-        };
-      }
-
-      case 'record_pipeline_stage_result': {
-        const state = recordStageResult(
-          safeArgs.sessionId as string,
-          {
-            stageName: safeArgs.stageName as string,
-            success: safeArgs.success as boolean,
-            output: safeArgs.output as string | undefined,
-            error: safeArgs.error as string | undefined,
-            executionTimeMs: safeArgs.executionTimeMs as number,
-          }
-        );
-        if (!state) {
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Pipeline not found' }) }],
-            isError: true,
-          };
-        }
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({
-              status: state.status,
-              currentStage: state.currentStage,
-              totalStages: state.pipeline.stages.length,
-              completed: state.status === 'completed',
-            }, null, 2),
-          }],
-        };
-      }
-
-      case 'start_pipeline': {
-        const started = startPipeline(safeArgs.sessionId as string);
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ success: started }) }],
-        };
-      }
-
-      case 'get_pipeline_status': {
-        const statusResult = getPipelineStatus(safeArgs.sessionId as string);
-        if (!statusResult) {
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Pipeline not found' }) }],
-            isError: true,
-          };
-        }
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(statusResult, null, 2) }],
-        };
-      }
-
       case 'list_pipeline_presets': {
         const presets = listPipelinePresets();
         return {
@@ -2276,16 +1998,136 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'generate_pipeline_orchestrator_prompt': {
-        const fullState = getPipelineState(safeArgs.sessionId as string);
-        if (!fullState) {
+        const pipeline = safeArgs.pipeline as { name: string; stages: Array<{ name: string }>; description?: string };
+        if (!pipeline) {
+          throw new Error('Pipeline object is required');
+        }
+        const sessionId = generatePipelineSessionId();
+        const prompt = generatePipelineOrchestratorPrompt(pipeline as any, sessionId);
+        return {
+          content: [{ type: 'text' as const, text: prompt }],
+        };
+      }
+
+      // === Context Collection (v3.0) ===
+      case 'collect_project_context': {
+        const ctx = collectProjectContext(safeArgs.planningDir as string | undefined);
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({
+            exists: ctx.exists,
+            hasProject: !!ctx.projectMd,
+            hasRoadmap: !!ctx.roadmapMd,
+            hasRequirements: !!ctx.requirementsMd,
+            projectPreview: ctx.projectMd?.slice(0, 500),
+          }, null, 2) }],
+        };
+      }
+
+      case 'collect_phase_context': {
+        const ctx = collectPhaseContext(
+          safeArgs.phaseNumber as number,
+          safeArgs.planningDir as string | undefined
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({
+            exists: ctx.exists,
+            phaseNumber: ctx.phaseNumber,
+            phaseName: ctx.phaseName,
+            hasResearch: !!ctx.researchMd,
+            planCount: ctx.plans.length,
+            summaryCount: ctx.summaries.length,
+          }, null, 2) }],
+        };
+      }
+
+      case 'collect_task_context': {
+        const ctx = collectTaskContext(
+          safeArgs.planId as string,
+          safeArgs.planningDir as string | undefined
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({
+            exists: ctx.exists,
+            planId: ctx.planId,
+            hasPlan: !!ctx.planMd,
+            hasSummary: !!ctx.summaryMd,
+            planPath: ctx.planPath,
+          }, null, 2) }],
+        };
+      }
+
+      case 'compress_context': {
+        const ctx = collectContext({
+          planId: safeArgs.planId as string | undefined,
+          planningDir: safeArgs.planningDir as string | undefined,
+        });
+        const compacted = compactContext(ctx, {
+          planningDir: safeArgs.planningDir as string | undefined,
+        });
+
+        if (safeArgs.saveSnapshot) {
+          const filepath = saveContextSnapshot(compacted);
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Pipeline not found' }) }],
+            content: [{ type: 'text' as const, text: JSON.stringify({
+              snapshotId: compacted.snapshotId,
+              filepath,
+              originalTokens: compacted.originalTokens,
+              compactedTokens: compacted.compactedTokens,
+              compressionRatio: (compacted.compactedTokens / compacted.originalTokens * 100).toFixed(1) + '%',
+            }, null, 2) }],
+          };
+        }
+
+        return {
+          content: [{ type: 'text' as const, text: formatCompactedContext(compacted) }],
+        };
+      }
+
+      case 'restore_context': {
+        const restored = restoreContext(safeArgs.snapshotId as string || 'latest');
+        if (!restored) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Snapshot not found' }) }],
             isError: true,
           };
         }
-        const prompt = generatePipelineOrchestratorPrompt(fullState.pipeline, safeArgs.sessionId as string);
         return {
-          content: [{ type: 'text' as const, text: prompt }],
+          content: [{ type: 'text' as const, text: formatCompactedContext(restored) }],
+        };
+      }
+
+      // === Hints (v3.0 - suggestions, AI decides) ===
+      case 'suggest_complexity': {
+        const hint = suggestComplexity({
+          taskDescription: safeArgs.taskDescription as string,
+          files: safeArgs.files as string[] | undefined,
+          dependencies: safeArgs.dependencies as string[] | undefined,
+        });
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(hint, null, 2) }],
+        };
+      }
+
+      case 'suggest_route': {
+        const hint = suggestRoute({
+          taskDescription: safeArgs.taskDescription as string,
+          isUI: safeArgs.isUI as boolean | undefined,
+          isDocumentation: safeArgs.isDocumentation as boolean | undefined,
+          isDebugging: safeArgs.isDebugging as boolean | undefined,
+          isArchitecture: safeArgs.isArchitecture as boolean | undefined,
+        });
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(hint, null, 2) }],
+        };
+      }
+
+      case 'get_task_hints': {
+        const hints = getTaskHints({
+          taskDescription: safeArgs.taskDescription as string,
+          files: safeArgs.files as string[] | undefined,
+        });
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(hints, null, 2) }],
         };
       }
 
