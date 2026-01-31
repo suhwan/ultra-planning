@@ -3,9 +3,23 @@
 > **"실행하지 않는다. 맥락을 설계한다."**
 > (Don't execute, design context.)
 
-Ultra Planner는 Claude Code를 위한 **Context Architect**입니다. 맥락, 지혜, 힌트, 프롬프트를 제공하고 - 실행은 Claude Code의 네이티브 Task API가 처리합니다.
+Ultra Planner는 Claude Code를 위한 **Context Architect**입니다. GSD(Get Shit Done), OMC(oh-my-claudecode), OpenCode의 패턴을 통합하여 계획-실행 오케스트레이션을 제공합니다.
 
-## Philosophy
+## Features
+
+### Core Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Context Architect** | 맥락 수집, 주입, 압축 - Claude Code가 실행 |
+| **Research → Plan → Ralplan** | 리서치 후 계획, Architect + Critic 합의까지 검증 |
+| **인터뷰 기반 계획** | Planner 에이전트가 질문하고 계획 수립 |
+| **병렬 실행** | Wave 기반 태스크 병렬 처리 (Swarm 패턴) |
+| **Hints (AI Decides)** | 규칙이 아닌 힌트 - AI가 최종 결정 |
+| **Wisdom 축적** | 학습, 결정, 이슈 기록 - 세션 간 지속 |
+| **Fresh-Start 지원** | 20,000 → 200 토큰 압축으로 컨텍스트 보존 |
+
+### v3.0 Changes (Context Architect Pattern)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -16,36 +30,25 @@ Ultra Planner는 Claude Code를 위한 **Context Architect**입니다. 맥락, �
 │   ─────────────                    ──────────                │
 │   • Context Collection      →      • Task Execution          │
 │   • Context Injection       →      • State Management        │
-│   • Hints (AI decides)      →      • File Operations         │
+│   • Hints (isHint: true)    →      • File Operations         │
 │   • Prompt Generation       →      • Build/Test              │
 │   • Wisdom Accumulation     →      • Parallel Workers        │
 │                                                              │
+│   "We suggest, AI decides"         "Native is optimal"       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Why This Pattern?
-
-| Reason | Explanation |
-|--------|-------------|
-| **Future Compatibility** | Claude Code evolves; we ride on top, not against |
-| **Optimization** | Native features are always more optimized |
-| **Maintainability** | No duplicate code, reduced maintenance burden |
-| **Flexibility** | AI judgment > rigid rules |
-
 ## Installation
 
+### 1. 의존성 설치
+
 ```bash
-# Install dependencies
+cd ultra-planning
 npm install
-
-# Build
 npm run build
-
-# Run MCP server
-npm start
 ```
 
-### MCP 서버 설정
+### 2. MCP 서버 설정
 
 `~/.claude/settings.json`:
 ```json
@@ -59,155 +62,203 @@ npm start
 }
 ```
 
+### 3. 스킬/커맨드 설치 (선택)
+
+```bash
+# 전역 설치
+mkdir -p ~/.claude/commands ~/.claude/skills
+ln -sf /path/to/ultra-planning/.claude/commands/* ~/.claude/commands/
+ln -sf /path/to/ultra-planning/.claude/skills/* ~/.claude/skills/
+
+# 또는 프로젝트별 설치
+cp -r /path/to/ultra-planning/.claude /your/project/
+```
+
+## Workflows
+
+### /ultraplan:new-project
+
+새 프로젝트 초기화 - Research → Plan → Ralplan 검증 플로우:
+
+```
+/ultraplan:new-project [description] [--skip-research]
+```
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. RESEARCH — 4개 병렬 에이전트로 도메인 리서치             │
+│     • Tech Researcher: 기술 스택, 라이브러리                 │
+│     • Pattern Researcher: 아키텍처 패턴                      │
+│     • Integration Researcher: 외부 연동                      │
+│     • Risk Researcher: 리스크 분석                          │
+│                                                              │
+│  2. PLAN — 인터뷰 기반 계획                                  │
+│     • PROJECT.md 생성                                        │
+│     • ROADMAP.md 생성                                        │
+│     • Phase 분할                                             │
+│                                                              │
+│  3. RALPLAN — 합의 검증                                      │
+│     • Architect 검토                                         │
+│     • Critic 검토                                            │
+│     • 80% 이상 통과시 승인                                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### /ultraplan:plan-phase
+
+특정 Phase 계획 생성:
+
+```
+/ultraplan:plan-phase [phase-number]
+```
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. Phase Research — 구현 방법 리서치                        │
+│  2. Plan Generation — PLAN.md 생성                          │
+│  3. Ralplan Verification — Architect + Critic 검증           │
+│  4. Task Breakdown — Wave 기반 태스크 분할                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### /ultraplan:execute
+
+Phase 실행:
+
+```
+/ultraplan:execute [phase-number] [--parallel N]
+```
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Wave-based Execution                                        │
+│                                                              │
+│  Wave 1: [Task A] [Task B] [Task C]  ← 병렬 실행             │
+│              ↓                                               │
+│  Wave 2: [Task D] [Task E]           ← Wave 1 완료 후        │
+│              ↓                                               │
+│  Wave 3: [Task F]                    ← Wave 2 완료 후        │
+│                                                              │
+│  • Executor 에이전트가 태스크 실행                           │
+│  • Architect 에이전트가 검증                                 │
+│  • 실패시 자동 재시도 (Ralph Loop)                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### /thorough
+
+GSD 플랜 생성 + Architect 검토 + 병렬 실행 자동화:
+
+```
+/thorough all              # 모든 Phase 실행
+/thorough from 3           # Phase 3부터 실행
+```
+
 ## Architecture
 
 ```
-src/
-├── context/           # Context Architect (v3.0)
-│   ├── collector.ts   # Collect from .planning files
-│   ├── injector.ts    # Role-based context injection
-│   └── compactor.ts   # Compress for fresh-start
+ultra-planning/
+├── src/
+│   ├── context/              # Context Architect (v3.0 Core)
+│   │   ├── collector.ts      # .planning에서 맥락 수집
+│   │   ├── injector.ts       # 역할별 맥락 주입
+│   │   ├── compactor.ts      # Fresh-start용 압축
+│   │   ├── estimator.ts      # 토큰 추정
+│   │   ├── thresholds.ts     # 임계값 감지
+│   │   └── monitor.ts        # 컨텍스트 모니터링
+│   │
+│   ├── hints/                # AI 힌트 (규칙 아님)
+│   │   ├── complexity.ts     # 복잡도 힌트 (isHint: true)
+│   │   ├── routing.ts        # 라우팅 힌트 (isHint: true)
+│   │   └── types.ts          # 힌트 타입 정의
+│   │
+│   ├── prompts/              # 프롬프트 생성
+│   │   ├── worker.ts         # 워커 프롬프트
+│   │   ├── orchestrator.ts   # 오케스트레이터 프롬프트
+│   │   ├── executor.ts       # 실행 루프 프롬프트
+│   │   └── templates/        # 재사용 템플릿
+│   │
+│   ├── notepad/              # Wisdom 축적
+│   │   ├── manager.ts        # 노트패드 관리
+│   │   ├── learnings.ts      # 학습 기록
+│   │   ├── decisions.ts      # 결정 기록
+│   │   └── issues.ts         # 이슈 기록
+│   │
+│   ├── orchestration/        # 오케스트레이션
+│   │   ├── swarm/            # Swarm 패턴 (프롬프트 생성만)
+│   │   ├── pipeline/         # Pipeline 패턴 (프리셋 정의만)
+│   │   ├── delegation/       # 태스크 라우팅
+│   │   ├── verdicts/         # Architect/Critic 판정
+│   │   ├── deviation/        # 일탈 처리
+│   │   ├── revision/         # 계획 수정
+│   │   └── spike/            # 불확실성 탐색
+│   │
+│   ├── sync/                 # Claude Code 동기화
+│   │   ├── plan-parser.ts    # PLAN.md 파싱
+│   │   ├── task-creation.ts  # TaskCreate 생성
+│   │   ├── progress.ts       # 진행률 계산
+│   │   └── status-sync.ts    # 상태 동기화
+│   │
+│   ├── documents/            # 문서 생성
+│   │   └── templates/        # PROJECT, ROADMAP, PLAN 템플릿
+│   │
+│   ├── complexity/           # 복잡도 추정 (레거시)
+│   ├── state/                # 상태 관리
+│   └── mcp-server.ts         # MCP 서버 (70+ 도구)
 │
-├── hints/             # AI Suggestions (not rules)
-│   ├── complexity.ts  # Complexity hints (isHint: true)
-│   └── routing.ts     # Routing hints (isHint: true)
+├── .claude/
+│   ├── commands/             # 슬래시 커맨드
+│   │   ├── ultraplan-new-project.md
+│   │   ├── ultraplan-plan-phase.md
+│   │   ├── ultraplan-execute.md
+│   │   └── fresh-start.md
+│   │
+│   ├── skills/               # 스킬 정의
+│   │   ├── ultraplan/        # Ultra Plan 스킬
+│   │   ├── thorough/         # Thorough 모드
+│   │   └── fresh-start/      # Fresh-start 스킬
+│   │
+│   └── agents/               # 에이전트 정의
 │
-├── prompts/           # Prompt Generation
-│   ├── worker.ts      # Worker prompts
-│   ├── orchestrator.ts# Orchestrator prompts
-│   └── executor.ts    # Executor loop prompts
+├── .planning/                # 프로젝트 계획 (생성됨)
+│   ├── PROJECT.md
+│   ├── ROADMAP.md
+│   ├── REQUIREMENTS.md
+│   ├── STATE.md
+│   ├── phases/
+│   └── notepads/
 │
-├── notepad/           # Wisdom Accumulation
-│   ├── learnings.ts   # Learning records
-│   ├── decisions.ts   # Decision records
-│   └── issues.ts      # Issue records
-│
-├── orchestration/     # Simplified Orchestration
-│   ├── swarm/         # Prompt generation only
-│   └── pipeline/      # Preset definitions only
-│
-└── mcp-server.ts      # MCP Server (~45 tools)
+└── tests/                    # 테스트
+    └── integration/          # E2E 테스트
 ```
 
-## Core Modules
+## MCP Tools (70+)
 
-### 1. Context Collection
-
-`.planning` 디렉토리에서 맥락 수집:
-
-```typescript
-import { collectContext } from 'ultra-planner';
-
-const ctx = collectContext({
-  planId: '03-01',
-  includeProject: true,
-  includePhase: true,
-});
-
-// ctx.project  → PROJECT.md, ROADMAP.md, REQUIREMENTS.md
-// ctx.phase    → Research, Plans, Summaries
-// ctx.task     → Current PLAN.md
-```
-
-### 2. Context Injection
-
-각 에이전트 역할에 맞는 맥락 주입:
-
-```typescript
-import { injectWorkerContext, injectArchitectContext } from 'ultra-planner';
-
-// Worker: 태스크 계획, 페이즈 리서치, 프로젝트 개요
-const workerCtx = injectWorkerContext(ctx);
-
-// Architect: 검증할 태스크, 요구사항, 프로젝트 맥락
-const architectCtx = injectArchitectContext(ctx);
-```
-
-| Role | Gets |
-|------|------|
-| Worker | Task plan, phase research, project overview |
-| Orchestrator | All phase plans, roadmap, requirements |
-| Planner | Project, requirements, roadmap, research |
-| Executor | Task plan, task summary, minimal project |
-| Architect | Task to verify, requirements, project |
-| Critic | Plan to review, requirements, roadmap |
-
-### 3. Context Compaction
-
-Fresh-start 시나리오를 위한 맥락 압축:
-
-```typescript
-import { compactContext, saveContextSnapshot, restoreContext } from 'ultra-planner';
-
-// 대화 리셋 전
-const compacted = compactContext(ctx);
-saveContextSnapshot(compacted);
-// 20,000 tokens → 200 tokens (99% 압축)
-
-// Fresh-start 후
-const restored = restoreContext('latest');
-```
-
-### 4. Hints (AI Decides)
-
-`isHint: true`로 제안 제공 - AI가 최종 결정:
-
-```typescript
-import { suggestComplexity, suggestRoute, getTaskHints } from 'ultra-planner';
-
-const complexity = suggestComplexity({
-  taskDescription: 'Add OAuth authentication',
-  files: ['auth.ts', 'middleware.ts'],
-});
-// { isHint: true, level: 4, category: 'complex', confidence: 0.8 }
-
-const routing = suggestRoute({
-  taskDescription: 'Debug race condition',
-  contextHints: { isDebugging: true },
-});
-// { isHint: true, agent: 'architect', model: 'opus', confidence: 0.9 }
-
-// 통합 힌트
-const hints = getTaskHints({ taskDescription: '...' });
-// hints.message: "Your judgment is the final authority."
-```
-
-### 5. Prompt Generation
-
-워커 및 오케스트레이터 프롬프트 생성:
-
-```typescript
-import { generateWorkerPrompt, generateOrchestratorPrompt } from 'ultra-planner';
-
-const workerPrompt = generateWorkerPrompt({
-  worker: { id: 'w1', name: 'Auth Worker', index: 0 },
-  planPath: '.planning/phases/03-auth/03-01-PLAN.md',
-  learnings: formattedContext,
-});
-
-const orchestratorPrompt = generateOrchestratorPrompt({
-  planPath: '.planning/phases/03-auth/03-01-PLAN.md',
-  workerCount: 3,
-});
-```
-
-## MCP Tools
-
-### Context Tools
+### Context Tools (v3.0)
 | Tool | Description |
 |------|-------------|
 | `collect_project_context` | PROJECT.md, ROADMAP.md, REQUIREMENTS.md 수집 |
 | `collect_phase_context` | 페이즈 리서치 및 계획 수집 |
 | `collect_task_context` | 특정 PLAN.md 수집 |
-| `compress_context` | Fresh-start용 압축 |
+| `compress_context` | Fresh-start용 압축 (99% 압축률) |
 | `restore_context` | 스냅샷에서 복원 |
 
-### Hint Tools
+### Hint Tools (v3.0)
 | Tool | Description |
 |------|-------------|
 | `suggest_complexity` | 복잡도 힌트 (isHint: true) |
 | `suggest_route` | 라우팅 힌트 (isHint: true) |
-| `get_task_hints` | 모든 힌트 한번에 |
+| `get_task_hints` | 모든 힌트 통합 |
+
+### Plan Sync Tools
+| Tool | Description |
+|------|-------------|
+| `parse_plan` | PLAN.md 파싱 |
+| `extract_task_mappings` | 태스크 매핑 추출 |
+| `generate_task_creates` | TaskCreate 생성 |
+| `get_execution_order` | Wave 순서 계산 |
+| `build_dependency_map` | 의존성 맵 생성 |
+| `calculate_progress` | 진행률 계산 |
 
 ### Wisdom Tools
 | Tool | Description |
@@ -216,14 +267,136 @@ const orchestratorPrompt = generateOrchestratorPrompt({
 | `add_decision` | 결정 기록 |
 | `add_issue` | 이슈 기록 |
 | `get_wisdom` | 축적된 지혜 조회 |
-| `create_wisdom_directive` | 서브에이전트용 디렉티브 생성 |
+| `create_wisdom_directive` | 서브에이전트용 디렉티브 |
+| `has_wisdom` | 지혜 존재 확인 |
+| `merge_plan_to_project` | 플랜 지혜 → 프로젝트 병합 |
+| `generate_project_summary` | 프로젝트 요약 생성 |
+| `init_plan_notepad` | 플랜별 노트패드 초기화 |
+
+### Complexity Tools
+| Tool | Description |
+|------|-------------|
+| `estimate_task_complexity` | 태스크 복잡도 추정 (1-5) |
+| `get_model_for_complexity` | 복잡도별 모델 추천 |
+| `batch_estimate_complexity` | 배치 복잡도 추정 |
+
+### Verdict Tools
+| Tool | Description |
+|------|-------------|
+| `evaluate_architect_checklist` | Architect 체크리스트 평가 |
+| `evaluate_critic_checklist` | Critic 체크리스트 평가 |
+| `get_approval_threshold` | 승인 임계값 (80%) |
+
+### Session Tools
+| Tool | Description |
+|------|-------------|
+| `create_session` | 세션 생성 |
+| `get_session` | 세션 조회 |
+| `list_sessions` | 세션 목록 |
+| `claim_task_for_session` | 태스크 클레임 |
+| `complete_session` | 세션 완료 |
+
+### Revision Tools
+| Tool | Description |
+|------|-------------|
+| `flag_plan_for_revision` | 계획 수정 플래그 |
+| `check_revision_needed` | 수정 필요 확인 |
+| `complete_plan_revision` | 수정 완료 |
+| `get_plan_version_history` | 버전 히스토리 |
+
+### Deviation Tools
+| Tool | Description |
+|------|-------------|
+| `report_deviation` | 일탈 보고 |
+| `get_deviations` | 일탈 목록 |
+| `get_pending_approvals` | 대기 중 승인 |
+| `submit_deviation_verdict` | 일탈 판정 |
+| `get_deviation_stats` | 일탈 통계 |
+| `has_unresolved_level3` | Level 3 일탈 확인 |
+
+### Spike Tools
+| Tool | Description |
+|------|-------------|
+| `create_spike` | 스파이크 생성 |
+| `assess_uncertainty` | 불확실성 평가 |
+| `complete_spike` | 스파이크 완료 |
+| `get_pending_spikes` | 대기 중 스파이크 |
+| `get_spike_stats` | 스파이크 통계 |
+
+### Rollback Tools
+| Tool | Description |
+|------|-------------|
+| `complete_phase` | Phase 완료 + 체크포인트 |
+| `list_phase_tags` | Phase 태그 목록 |
+| `preview_rollback` | 롤백 미리보기 |
+| `selective_rollback` | 선택적 롤백 |
+| `rollback_to_phase` | Phase로 롤백 |
+| `get_rollback_targets` | 롤백 대상 목록 |
 
 ### Prompt Tools
 | Tool | Description |
 |------|-------------|
 | `generate_worker_prompt` | 워커 프롬프트 생성 |
-| `generate_swarm_orchestrator_prompt` | 오케스트레이터 프롬프트 생성 |
-| `generate_pipeline_orchestrator_prompt` | 파이프라인 프롬프트 생성 |
+| `generate_swarm_orchestrator_prompt` | Swarm 오케스트레이터 프롬프트 |
+| `generate_pipeline_orchestrator_prompt` | Pipeline 오케스트레이터 프롬프트 |
+| `generate_executor_loop_prompt` | 실행 루프 프롬프트 |
+
+### Pipeline Tools
+| Tool | Description |
+|------|-------------|
+| `create_pipeline_preset` | 프리셋 파이프라인 생성 |
+| `parse_pipeline_string` | 파이프라인 문자열 파싱 |
+| `list_pipeline_presets` | 프리셋 목록 (review, implement, debug, research, refactor, security) |
+
+### Delegation Tools
+| Tool | Description |
+|------|-------------|
+| `detect_task_category` | 태스크 카테고리 감지 |
+| `route_task` | 태스크 라우팅 |
+| `route_by_complexity` | 복잡도 기반 라우팅 |
+| `list_delegation_categories` | 카테고리 목록 |
+
+## .planning Directory
+
+프로젝트 초기화 후 생성되는 구조:
+
+```
+.planning/
+├── PROJECT.md              # 프로젝트 정의
+│   ├── name, version, core_value
+│   ├── Requirements (Validated/Active/OutOfScope)
+│   ├── Context, Constraints
+│   └── Key Decisions
+│
+├── ROADMAP.md              # 페이즈 로드맵
+│   ├── Phase 1: Foundation
+│   ├── Phase 2: Core Features
+│   └── Phase N: ...
+│
+├── REQUIREMENTS.md         # 상세 요구사항
+├── STATE.md                # 현재 상태
+│
+├── phases/
+│   ├── 01-foundation/
+│   │   ├── 01-RESEARCH.md      # 페이즈 리서치
+│   │   ├── 01-01-PLAN.md       # 플랜 1
+│   │   ├── 01-01-SUMMARY.md    # 플랜 1 요약
+│   │   └── 01-02-PLAN.md       # 플랜 2
+│   │
+│   └── 02-core/
+│       └── ...
+│
+├── research/               # 프로젝트 리서치
+│   ├── TECH-STACK.md
+│   ├── PATTERNS.md
+│   └── SUMMARY.md
+│
+└── notepads/
+    └── _project/
+        ├── learnings.md    # 축적된 학습
+        ├── decisions.md    # 축적된 결정
+        └── issues.md       # 축적된 이슈
+```
 
 ## Testing
 
@@ -233,61 +406,63 @@ npm test
 
 # E2E 시나리오 테스트
 npm test -- tests/integration/e2e-full-scenario.test.ts
+
+# 특정 모듈 테스트
+npm test -- src/context/
+npm test -- src/hints/
 ```
 
-**테스트 커버리지:**
-- 247 tests across 11 test files
-- Context collection, injection, compaction
-- Hints with isHint verification
-- Full E2E workflow tests
-
-## .planning Directory Structure
-
+**테스트 결과:**
 ```
-.planning/
-├── PROJECT.md          # 프로젝트 정의
-├── ROADMAP.md          # 페이즈 로드맵
-├── REQUIREMENTS.md     # 요구사항
-├── STATE.md            # 현재 상태
-├── phases/
-│   ├── 01-foundation/
-│   │   ├── 01-RESEARCH.md
-│   │   ├── 01-01-PLAN.md
-│   │   └── 01-01-SUMMARY.md
-│   └── ...
-└── notepads/
-    └── _project/
-        ├── learnings.md
-        ├── decisions.md
-        └── issues.md
+Test Files  11 passed (11)
+     Tests  247 passed (247)
 ```
 
-## Integration with Claude Code
+## Integration with GSD/OMC
 
-Ultra Planner는 Claude Code와 원활하게 통합:
+Ultra Planner는 GSD(Get Shit Done)와 OMC(oh-my-claudecode) 패턴을 통합:
 
-```
-1. Ultra Planner가 .planning에서 맥락 수집
-2. 에이전트 역할에 맞게 맥락 주입
-3. 힌트 제공 (AI가 결정, 규칙 아님)
-4. 워커용 프롬프트 생성
-5. Claude Code가 TaskList, TaskUpdate, Task API로 실행
-6. 지혜가 축적되어 다음 세션에 활용
-```
+### GSD 통합
+- `/thorough` - GSD 스타일 자동 실행
+- Atomic commits per task
+- Phase completion with checkpoints
+- Deviation handling (Level 1-3)
+
+### OMC 통합
+- `oh-my-claudecode:executor` 에이전트 지원
+- `oh-my-claudecode:architect` 검증 지원
+- Delegation categories (quick, standard, complex, ultrabrain, visual-engineering, artistry, writing)
 
 ## Version History
 
-### v3.0 - Context Architect Pattern
+### v3.0 - Context Architect Pattern (Current)
 - Context collection, injection, compaction
-- Hints with `isHint: true` (AI decides)
+- Hints with `isHint: true` (AI decides, not rules)
 - Removed state management (Claude Code handles)
 - Simplified swarm/pipeline to prompt generation only
 - 247 tests (11 test files)
 
 ### v2.0 - Multi-agent Orchestration
-- Swarm, pipeline, delegation
+- Swarm pattern for parallel execution
+- Pipeline pattern with 6 presets
+- Deviation handling
+- Spike phase for uncertainty
 - Complexity estimation
-- Wisdom notepad
+
+### v1.0 - Foundation
+- Basic planning workflow
+- PLAN.md format
+- Wave-based execution
+
+## Philosophy
+
+> **"Claude Code는 계속 발전한다. 우리는 발전을 따라가는 게 아니라, 발전 위에 올라타는 것이다."**
+
+Ultra Planner는 Claude Code의 **"기억"과 "지혜"** 역할을 합니다:
+- 컨텍스트를 수집하고 주입
+- 힌트를 제공하되 결정은 AI에게
+- 지혜를 축적하여 세션 간 지속
+- 실행은 항상 Claude Code의 네이티브 기능으로
 
 ## License
 
@@ -295,4 +470,4 @@ MIT
 
 ---
 
-*"Claude Code는 계속 발전한다. 우리는 발전을 따라가는 게 아니라, 발전 위에 올라타는 것이다."*
+*Made with Ultra Planner v3.0 - Context Architect*
