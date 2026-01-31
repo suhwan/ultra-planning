@@ -28,10 +28,10 @@ export * from './spike/index.js';
 // Swarm module - parallel worker coordination with task claiming
 export * from './swarm/index.js';
 
-// Pipeline module - sequential agent chaining
-// Use selective exports to avoid conflicts with quality/pipeline types
+// Pipeline module - sequential agent chaining (v3.0 simplified)
+// State management delegated to Claude Code, only prompt generation retained
 export {
-  // Types (renamed to avoid conflicts with quality/pipeline)
+  // Types (renamed to avoid conflicts with quality/pipeline types)
   type Pipeline,
   type PipelineState,
   type PipelineConfig,
@@ -46,24 +46,18 @@ export {
   // Constants
   PIPELINE_PRESETS,
   DEFAULT_PIPELINE_CONFIG,
-  // Functions
+  // Functions (prompt generation only)
   createPipelineFromPreset,
   createCustomPipeline,
   parsePipelineString,
-  initializePipeline,
   buildStagePrompt,
-  recordStageResult,
-  getCurrentStage,
-  getParallelStages,
-  startPipeline,
-  pausePipeline,
-  resumePipeline,
-  cancelPipeline,
-  getPipelineStatus,
-  getPipelineState,
+  getParallelGroups,
   generatePipelineOrchestratorPrompt,
+  generateStagePrompt,
   listPresets,
-  loadPipelineState,
+  estimatePipelineDuration,
+  generatePipelineSessionId,
+  createPipelineConfig,
 } from './pipeline/index.js';
 
 // Delegation module - task routing based on complexity

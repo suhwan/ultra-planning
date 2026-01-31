@@ -1,0 +1,12 @@
+{
+  "sessionId": {
+    "id": "407554b3-da2c-495c-8682-6204fd0e489a",
+    "createdAt": "2026-01-31T03:17:36.928Z",
+    "name": "test"
+  },
+  "mode": "idle",
+  "claimedTasks": [],
+  "agentRole": "executor",
+  "startedAt": "2026-01-31T03:17:36.928Z",
+  "lastActivityAt": "2026-01-31T03:17:36.928Z"
+}

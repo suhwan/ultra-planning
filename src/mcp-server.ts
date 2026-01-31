@@ -2111,10 +2111,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'suggest_route': {
         const hint = suggestRoute({
           taskDescription: safeArgs.taskDescription as string,
-          isUI: safeArgs.isUI as boolean | undefined,
-          isDocumentation: safeArgs.isDocumentation as boolean | undefined,
-          isDebugging: safeArgs.isDebugging as boolean | undefined,
-          isArchitecture: safeArgs.isArchitecture as boolean | undefined,
+          contextHints: {
+            isUI: safeArgs.isUI as boolean | undefined,
+            isDocumentation: safeArgs.isDocumentation as boolean | undefined,
+            isDebugging: safeArgs.isDebugging as boolean | undefined,
+            isArchitecture: safeArgs.isArchitecture as boolean | undefined,
+          },
         });
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(hint, null, 2) }],

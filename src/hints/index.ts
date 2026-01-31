@@ -70,7 +70,9 @@ export function getTaskHints(input: ComplexitySuggestionInput & RoutingSuggestio
     complexity,
     routing,
     model: {
-      ...model,
+      tier: model.model,
+      isHint: model.isHint,
+      reason: model.reason,
       confidence: Math.min(complexity.confidence, routing.confidence),
     },
     message,
