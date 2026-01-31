@@ -295,9 +295,101 @@ cd references/oh-my-claudecode && git pull origin main
 cat .ultraplan/config.json | jq .
 ```
 
+## Dynamic Skill Injection (v3.1.1)
+
+오케스트레이터가 컨텍스트를 분석하여 에이전트 프롬프트에 스킬을 자동 주입합니다.
+
+### Skill Registry
+
+스킬 정의서는 `.ultraplan/skills/`에 YAML로 저장됩니다:
+
+```yaml
+# .ultraplan/skills/build-fix.yaml
+id: build-fix
+name: 빌드 에러 수정
+version: "1.0"
+
+triggers:
+  error_patterns:
+    - "error TS"
+    - "SyntaxError"
+  keywords:
+    high: [빌드 에러, 타입 에러]
+
+context:
+  agents: [ultraplan-executor]
+  trigger_events: [build_error]
+
+prompt_template: |
+  ## Build-Fix 스킬 활성화
+  빌드 에러를 최소 변경으로 수정하세요...
+```
+
+### Auto Selection Rules
+
+`_index.yaml`에서 이벤트 기반 자동 선택:
+
+```yaml
+auto_selection:
+  on_build_error:
+    always: [build-fix]
+    if_type_error: [tdd-guide]
+  on_execution_complete:
+    always: [security-review]
+  on_image_input:
+    always: [vision-analysis]
+```
+
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `match_skills` | 컨텍스트 기반 스킬 매칭 |
+| `inject_skills` | 에이전트 프롬프트에 스킬 주입 |
+| `inject_specific_skills` | 특정 스킬 강제 주입 |
+| `needs_skill_injection` | 스킬 주입 필요 여부 확인 |
+| `list_skills` | 모든 스킬 목록 |
+| `get_skill` | 스킬 상세 조회 |
+| `get_auto_selected_skills` | 자동 선택 스킬 조회 |
+
+### Orchestrator Usage
+
+```javascript
+// 1. 스킬 주입 필요 여부 확인
+const needs = await needsSkillInjection({ agentId, basePrompt, context });
+
+// 2. 스킬 주입
+const result = await injectSkills({
+  agentId: "ultraplan-executor",
+  basePrompt: "Execute task...",
+  context: {
+    triggerEvent: "build_error",
+    errors: ["error TS2304: Cannot find name 'foo'"],
+    flags: { tddMode: true }
+  }
+});
+
+// 3. 강화된 프롬프트로 에이전트 호출
+Task(subagent_type="ultraplan-executor", prompt=result.enhancedPrompt)
+```
+
+### Available Skills
+
+| Skill ID | Name | Trigger |
+|----------|------|---------|
+| `build-fix` | 빌드 에러 수정 | 빌드/타입 에러 발생 시 |
+| `security-review` | 보안 리뷰 | 실행 완료 후 |
+| `tdd-guide` | TDD 가이드 | TDD 모드 활성화 시 |
+| `vision-analysis` | 이미지 분석 | 이미지 입력 시 |
+
 ## Version History
 
-- **v3.1.0** (2025-01-31): Hybrid Integration
+- **v3.1.1** (2026-01-31): Dynamic Skill Injection
+  - 스킬 레지스트리 시스템 추가
+  - MCP 도구 7개 추가 (match_skills, inject_skills 등)
+  - 자동 선택 규칙 기반 스킬 주입
+
+- **v3.1.0** (2026-01-31): Hybrid Integration
   - GSD 리서치 + 계획 통합
   - OMC 전문 에이전트 통합
   - Model Profiles 추가

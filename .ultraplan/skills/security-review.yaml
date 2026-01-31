@@ -1,0 +1,106 @@
+# 스킬 정의서: 보안 리뷰
+id: security-review
+name: 보안 리뷰
+version: "1.0"
+
+description: |
+  OWASP Top 10 취약점, 시크릿 노출, 안전하지 않은 패턴을 탐지합니다.
+  실행 완료 후 자동으로 호출되어 보안 문제를 사전에 발견합니다.
+
+use_cases:
+  - 코드 보안 검사
+  - 시크릿 노출 탐지
+  - 인젝션 취약점 검사
+  - 인증/인가 검증
+  - 입력 유효성 검사
+
+triggers:
+  # 자동 트리거 조건
+  auto_trigger:
+    - on_execution_complete
+    - on_sensitive_file_change
+    - on_auth_code_change
+
+  # 민감 파일 패턴
+  sensitive_files:
+    - "**/auth/**"
+    - "**/login/**"
+    - "**/api/**"
+    - "**/*.env*"
+    - "**/secrets/**"
+    - "**/credentials/**"
+
+  keywords:
+    high:
+      - 보안 검사
+      - security review
+      - 취약점
+      - vulnerability
+    medium:
+      - 인증
+      - 권한
+      - API 키
+
+capabilities:
+  - owasp_top10          # OWASP 상위 10 검사
+  - secret_detection     # 시크릿 탐지
+  - injection_check      # 인젝션 취약점
+  - auth_review          # 인증/인가 검토
+  - input_validation     # 입력 검증
+
+outputs:
+  - type: security_report
+    format: markdown
+  - type: findings
+    format: json
+  - type: verdict
+    format: "PASS | ISSUES_FOUND"
+
+prompt_template: |
+  ## Security-Review 스킬 활성화
+
+  당신은 보안 전문가입니다. 코드를 검토하여 보안 취약점을 찾습니다.
+
+  ### 검사 항목 (OWASP Top 10 기반)
+  1. **인젝션**: SQL, Command, XSS
+  2. **인증 취약점**: 약한 세션, 노출된 토큰
+  3. **민감 데이터 노출**: 하드코딩된 시크릿, 로그 노출
+  4. **접근 제어 누락**: 인가 검사 없는 엔드포인트
+  5. **보안 설정 오류**: 디버그 모드, 기본값
+  6. **취약한 컴포넌트**: 알려진 취약 패키지
+  7. **입력 검증 부재**: 사용자 입력 미검증
+
+  ### 출력 형식
+  ```
+  ## 보안 리뷰 결과
+
+  **Verdict**: PASS | ISSUES_FOUND
+
+  ### Findings
+  - [CRITICAL] 설명 (파일:라인)
+  - [HIGH] 설명 (파일:라인)
+  - [MEDIUM] 설명 (파일:라인)
+  - [LOW] 설명 (파일:라인)
+
+  ### Recommendations
+  - 권장사항
+  ```
+
+context:
+  agents:
+    - ultraplan-architect
+    - oh-my-claudecode:security-reviewer
+  phases:
+    - verification
+    - post_execution
+  trigger_events:
+    - execution_complete
+    - sensitive_file_modified
+
+model_routing:
+  default: opus
+  if_quick_scan: haiku
+
+synergies:
+  - code-review
+  - build-fix

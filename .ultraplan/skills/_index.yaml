@@ -1,0 +1,105 @@
+# Ultra Planner 스킬 레지스트리 인덱스
+# 오케스트레이터가 자동으로 스킬을 매칭하고 에이전트에 주입
+
+version: "1.0"
+updated: "2026-01-31"
+
+# 스킬 카테고리
+categories:
+  quality:
+    name: 품질 관리
+    description: 빌드, 보안, 코드 품질 관련 스킬
+    skills:
+      - build-fix
+      - security-review
+      - code-review
+
+  testing:
+    name: 테스트
+    description: TDD, QA 관련 스킬
+    skills:
+      - tdd-guide
+      - qa-testing
+
+  multimodal:
+    name: 멀티모달
+    description: 이미지, 다이어그램 분석
+    skills:
+      - vision-analysis
+
+  research:
+    name: 리서치
+    description: 문서, API 조사
+    skills:
+      - doc-research
+      - api-research
+
+  planning:
+    name: 계획
+    description: 아키텍처, 설계 관련
+    skills:
+      - architecture-design
+      - task-breakdown
+
+# 스킬 간 관계
+relationships:
+  build-fix:
+    leads_to: [security-review]
+    combines_with: [code-review]
+
+  security-review:
+    leads_to: [code-review]
+    requires: [build-fix]
+
+  tdd-guide:
+    leads_to: [qa-testing]
+    combines_with: [build-fix]
+
+  vision-analysis:
+    leads_to: [ui-implementation]
+    combines_with: [design-system]
+
+# 자동 선택 규칙 (오케스트레이터가 사용)
+auto_selection:
+  # 빌드 에러 발생 시
+  on_build_error:
+    always: [build-fix]
+    if_type_error: [tdd-guide]
+
+  # 실행 완료 후
+  on_execution_complete:
+    always: [security-review]
+    if_code_review_enabled: [code-review]
+
+  # 이미지 입력 시
+  on_image_input:
+    always: [vision-analysis]
+    if_contains_ui: [ui-implementation]
+
+  # TDD 모드 시
+  on_tdd_mode:
+    always: [tdd-guide]
+    add_before_each_task: [tdd-guide]
+
+  # 리서치 필요 시
+  on_research_needed:
+    always: [doc-research]
+    if_external_api: [api-research]
+
+# 에이전트별 기본 스킬
+agent_defaults:
+  ultraplan-executor:
+    auto_inject: []
+    available: [build-fix, tdd-guide]
+
+  ultraplan-architect:
+    auto_inject: []
+    available: [security-review, code-review, architecture-design]
+
+  gsd-planner:
+    auto_inject: []
+    available: [task-breakdown, architecture-design]
+
+  gsd-phase-researcher:
+    auto_inject: []
+    available: [doc-research, api-research]

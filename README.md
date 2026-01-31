@@ -362,6 +362,16 @@ ultra-planning/
 | `add_issue` | 이슈 기록 |
 | `get_wisdom` | 축적된 지혜 조회 |
 
+### Skill Injection Tools (v3.1.1)
+| Tool | Description |
+|------|-------------|
+| `match_skills` | 컨텍스트 기반 스킬 매칭 |
+| `inject_skills` | 에이전트 프롬프트에 스킬 주입 |
+| `inject_specific_skills` | 특정 스킬 강제 주입 |
+| `list_skills` | 스킬 목록 조회 |
+| `get_skill` | 스킬 상세 조회 |
+| `get_auto_selected_skills` | 자동 선택 스킬 조회 |
+
 (전체 70+ 도구 목록은 docs/HYBRID-INTEGRATION.md 참조)
 
 ## Updating References
@@ -374,7 +384,12 @@ GSD와 OMC는 정기적으로 업데이트됩니다:
 
 ## Version History
 
-### v3.1 - Hybrid Integration (Current)
+### v3.1.1 - Dynamic Skill Injection (Current)
+- 스킬 레지스트리 시스템 (YAML 기반)
+- 오케스트레이터 자동 스킬 매칭/주입
+- MCP 도구 7개 추가
+
+### v3.1.0 - Hybrid Integration
 - GSD Research + Planning 통합 (Context7, 검증 프로토콜)
 - OMC Agent 통합 (build-fixer, security-reviewer, code-reviewer, tdd-guide, vision)
 - Model Profiles (quality/balanced/budget)

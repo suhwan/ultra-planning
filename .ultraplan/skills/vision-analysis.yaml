@@ -1,0 +1,115 @@
+# 스킬 정의서: 이미지 분석
+id: vision-analysis
+name: 이미지 분석
+version: "1.0"
+
+description: |
+  이미지, 스크린샷, 디자인 목업에서 시각적 요소를 분석합니다.
+  UI/UX 디자인 분석, 레이아웃 파악, 색상/폰트 추출.
+  OMC vision 에이전트를 활용합니다.
+
+use_cases:
+  - 디자인 목업에서 UI 구조 파악
+  - 스크린샷 분석 후 코드 구현
+  - 다이어그램 해석 (아키텍처, ERD, 플로우)
+  - 에러 스크린샷 분석
+  - 경쟁사 UI 분석
+
+triggers:
+  input_types:
+    - image
+    - screenshot
+    - mockup
+    - diagram
+    - pdf
+
+  keywords:
+    high:
+      - 이미지 보고
+      - 스크린샷
+      - 디자인 분석
+      - 다이어그램
+    medium:
+      - 이거 보고
+      - 참고해서
+      - 화면 분석
+    low:
+      - 화면
+      - 그림
+
+capabilities:
+  - layout_extraction     # 레이아웃 구조 추출
+  - color_palette        # 색상 팔레트
+  - typography_analysis  # 폰트 분석
+  - component_detection  # UI 컴포넌트 감지
+  - diagram_parsing      # 다이어그램 해석
+  - error_screen_analysis # 에러 화면 분석
+
+outputs:
+  - type: analysis_report
+    format: markdown
+  - type: design_tokens
+    format: json
+  - type: component_list
+    format: yaml
+
+prompt_template: |
+  ## Vision-Analysis 스킬 활성화
+
+  당신은 시각 분석 전문가입니다. 이미지에서 정보를 추출합니다.
+
+  ### 분석 유형별 접근
+
+  **UI 목업/스크린샷인 경우:**
+  - 레이아웃 구조 (그리드, 섹션)
+  - 색상 팔레트 (HEX 값)
+  - 타이포그래피 (폰트 크기, 굵기)
+  - 컴포넌트 목록 (버튼, 카드, 폼 등)
+  - 간격 패턴 (패딩, 마진)
+
+  **다이어그램인 경우:**
+  - 엔티티/노드 식별
+  - 관계/연결 파악
+  - 흐름 방향 (있다면)
+  - 텍스트 라벨 추출
+
+  **에러 스크린샷인 경우:**
+  - 에러 메시지 추출
+  - 스택 트레이스 파싱
+  - 관련 파일/라인 식별
+
+  ### 출력 형식
+  ```markdown
+  ## 이미지 분석 결과
+
+  ### 요약
+  - 이미지 유형: [UI/다이어그램/에러]
+  - 주요 발견사항
+
+  ### 상세 분석
+  (분석 내용)
+
+  ### 구현 시 참고사항
+  (개발에 필요한 정보)
+  ```
+
+context:
+  agents:
+    - ultraplan-executor
+    - oh-my-claudecode:vision
+    - oh-my-claudecode:designer
+  phases:
+    - research
+    - planning
+    - execution
+  trigger_events:
+    - image_input
+    - screenshot_input
+    - diagram_input
+
+model_routing:
+  default: sonnet  # Vision은 Sonnet이 효과적
+
+synergies:
+  - ui-implementation
+  - design-system

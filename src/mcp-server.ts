@@ -169,6 +169,15 @@ import {
   generateHeartbeatProtocol,
 } from './orchestration/delegation/index.js';
 
+// Import skills functions (v3.1 - Dynamic Skill Injection)
+import {
+  getSkillRegistry,
+  injectSkills,
+  needsSkillInjection,
+  injectSpecificSkills,
+  analyzeContext,
+} from './skills/index.js';
+
 // ============================================================================
 // Server Setup
 // ============================================================================
@@ -1252,6 +1261,146 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: [],
         },
       },
+
+      // === Skills (v3.1 - Dynamic Skill Injection) ===
+      {
+        name: 'match_skills',
+        description: 'Match skills based on context (request, agent, phase, trigger event, input types, error patterns). Returns matched skills with scores.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            request: { type: 'string', description: 'User request or task description' },
+            agentId: { type: 'string', description: 'Target agent ID' },
+            phase: { type: 'string', description: 'Current phase (research, planning, execution, verification)' },
+            triggerEvent: { type: 'string', description: 'Trigger event (build_error, execution_complete, image_input, etc.)' },
+            inputTypes: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Input types (image, screenshot, mockup, diagram, etc.)',
+            },
+            errorPatterns: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Error messages to match against skill triggers',
+            },
+            maxResults: { type: 'number', description: 'Maximum number of results (default: 5)' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'inject_skills',
+        description: 'Analyze context and inject matched skills into agent prompt. Returns enhanced prompt with skill templates.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            agentId: { type: 'string', description: 'Target agent ID (required)' },
+            basePrompt: { type: 'string', description: 'Base prompt to enhance (required)' },
+            request: { type: 'string', description: 'User request' },
+            phase: { type: 'string', description: 'Current phase' },
+            triggerEvent: { type: 'string', description: 'Trigger event' },
+            attachments: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string' },
+                  path: { type: 'string' },
+                },
+              },
+              description: 'Attachments with type and optional path',
+            },
+            errors: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Error messages',
+            },
+            tddMode: { type: 'boolean', description: 'Enable TDD mode' },
+            securityReview: { type: 'boolean', description: 'Enable security review' },
+            codeReview: { type: 'boolean', description: 'Enable code review' },
+          },
+          required: ['agentId', 'basePrompt'],
+        },
+      },
+      {
+        name: 'inject_specific_skills',
+        description: 'Force inject specific skills by ID into agent prompt.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            skillIds: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Skill IDs to inject (required)',
+            },
+            agentId: { type: 'string', description: 'Target agent ID (required)' },
+            basePrompt: { type: 'string', description: 'Base prompt to enhance (required)' },
+          },
+          required: ['skillIds', 'agentId', 'basePrompt'],
+        },
+      },
+      {
+        name: 'needs_skill_injection',
+        description: 'Quick check if skill injection is needed based on context.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            agentId: { type: 'string', description: 'Target agent ID' },
+            basePrompt: { type: 'string', description: 'Base prompt' },
+            attachments: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string' },
+                  path: { type: 'string' },
+                },
+              },
+            },
+            errors: { type: 'array', items: { type: 'string' } },
+            tddMode: { type: 'boolean' },
+          },
+          required: ['agentId', 'basePrompt'],
+        },
+      },
+      {
+        name: 'list_skills',
+        description: 'List all available skills with their metadata.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            category: { type: 'string', description: 'Filter by category (optional)' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'get_skill',
+        description: 'Get a specific skill by ID.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            skillId: { type: 'string', description: 'Skill ID' },
+          },
+          required: ['skillId'],
+        },
+      },
+      {
+        name: 'get_auto_selected_skills',
+        description: 'Get skills auto-selected for a specific event with conditions.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            event: { type: 'string', description: 'Event name (e.g., "on_build_error", "on_execution_complete")' },
+            conditions: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Conditions to check (e.g., "type_error", "code_review_enabled")',
+            },
+          },
+          required: ['event'],
+        },
+      },
     ],
   };
 });
@@ -2189,6 +2338,165 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         });
         return {
           content: [{ type: 'text' as const, text: prompt }],
+        };
+      }
+
+      // === Skills (v3.1 - Dynamic Skill Injection) ===
+      case 'match_skills': {
+        const registry = getSkillRegistry();
+        const matches = registry.matchSkills(
+          {
+            request: safeArgs.request as string | undefined,
+            agentId: safeArgs.agentId as string | undefined,
+            phase: safeArgs.phase as string | undefined,
+            triggerEvent: safeArgs.triggerEvent as string | undefined,
+            inputTypes: safeArgs.inputTypes as string[] | undefined,
+            errorPatterns: safeArgs.errorPatterns as string[] | undefined,
+          },
+          {
+            maxResults: safeArgs.maxResults as number | undefined,
+          }
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(matches.map((m: { skill: { id: string; name: string; model_routing?: unknown }; score: number; matchReasons: string[] }) => ({
+              skillId: m.skill.id,
+              skillName: m.skill.name,
+              score: m.score,
+              matchReasons: m.matchReasons,
+              modelRouting: m.skill.model_routing,
+            })), null, 2),
+          }],
+        };
+      }
+
+      case 'inject_skills': {
+        const result = injectSkills({
+          agentId: safeArgs.agentId as string,
+          basePrompt: safeArgs.basePrompt as string,
+          context: {
+            request: safeArgs.request as string | undefined,
+            phase: safeArgs.phase as string | undefined,
+            triggerEvent: safeArgs.triggerEvent as string | undefined,
+            attachments: safeArgs.attachments as Array<{ type: string; path?: string }> | undefined,
+            errors: safeArgs.errors as string[] | undefined,
+            flags: {
+              tddMode: safeArgs.tddMode as boolean | undefined,
+              securityReview: safeArgs.securityReview as boolean | undefined,
+              codeReview: safeArgs.codeReview as boolean | undefined,
+            },
+          },
+        });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              agentId: result.agentId,
+              skillCount: result.skills.length,
+              skillIds: result.skills.map((s: { id: string }) => s.id),
+              skillNames: result.skills.map((s: { name: string }) => s.name),
+              modelOverride: result.modelOverride,
+              analysis: result.analysis,
+              enhancedPrompt: result.enhancedPrompt,
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'inject_specific_skills': {
+        const result = injectSpecificSkills(
+          safeArgs.skillIds as string[],
+          safeArgs.agentId as string,
+          safeArgs.basePrompt as string
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              agentId: result.agentId,
+              skillCount: result.skills.length,
+              skillIds: result.skills.map((s: { id: string }) => s.id),
+              modelOverride: result.modelOverride,
+              enhancedPrompt: result.enhancedPrompt,
+            }, null, 2),
+          }],
+        };
+      }
+
+      case 'needs_skill_injection': {
+        const needed = needsSkillInjection({
+          agentId: safeArgs.agentId as string,
+          basePrompt: safeArgs.basePrompt as string,
+          context: {
+            attachments: safeArgs.attachments as Array<{ type: string; path?: string }> | undefined,
+            errors: safeArgs.errors as string[] | undefined,
+            flags: {
+              tddMode: safeArgs.tddMode as boolean | undefined,
+            },
+          },
+        });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ needsInjection: needed }),
+          }],
+        };
+      }
+
+      case 'list_skills': {
+        const registry = getSkillRegistry();
+        const category = safeArgs.category as string | undefined;
+        const skills = category
+          ? registry.getSkillsByCategory(category)
+          : registry.getAllSkills();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(skills.map((s: { id: string; name: string; version: string; description: string; capabilities: string[]; context: { agents: string[] }; synergies: string[] }) => ({
+              id: s.id,
+              name: s.name,
+              version: s.version,
+              description: s.description,
+              capabilities: s.capabilities,
+              agents: s.context.agents,
+              synergies: s.synergies,
+            })), null, 2),
+          }],
+        };
+      }
+
+      case 'get_skill': {
+        const registry = getSkillRegistry();
+        const skill = registry.getSkill(safeArgs.skillId as string);
+        if (!skill) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ error: `Skill not found: ${safeArgs.skillId}` }),
+            }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(skill, null, 2),
+          }],
+        };
+      }
+
+      case 'get_auto_selected_skills': {
+        const registry = getSkillRegistry();
+        const skillIds = registry.getAutoSelectedSkills(
+          safeArgs.event as string,
+          safeArgs.conditions as string[] | undefined
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ event: safeArgs.event, skillIds }),
+          }],
         };
       }
 
