@@ -22,3 +22,9 @@ export {
   ORCHESTRATOR_PLAN_CHANGE_PROTOCOL,
   generatePlanChangeCheck,
 } from './plan-change.js';
+
+export {
+  HINTS_EXPLANATION,
+  HINTS_USAGE_SNIPPET,
+  generateHintsUsageMessage,
+} from './hints-usage.js';
