@@ -1,9 +1,71 @@
 {
-  "version": "0.1.0",
+  "version": "3.1.0",
   "mode": "interactive",
   "depth": "standard",
   "parallelization": true,
   "max_workers": 5,
   "commit_docs": true,
-  "model_profile": "balanced"
+
+  "modelProfile": "balanced",
+  "profiles": {
+    "quality": {
+      "description": "Maximum quality, higher cost",
+      "routing": {
+        "research": "opus",
+        "planning": "opus",
+        "execution": "opus",
+        "verification": "opus",
+        "simple_tasks": "sonnet"
+      },
+      "agents": {
+        "build-fixer": "build-fixer",
+        "security-reviewer": "security-reviewer",
+        "code-reviewer": "code-reviewer"
+      }
+    },
+    "balanced": {
+      "description": "Balance between quality and cost (default)",
+      "routing": {
+        "research": "opus",
+        "planning": "opus",
+        "execution": "sonnet",
+        "verification": "opus",
+        "simple_tasks": "haiku"
+      },
+      "agents": {
+        "build-fixer": "build-fixer",
+        "security-reviewer": "security-reviewer-low",
+        "code-reviewer": "code-reviewer-low"
+      }
+    },
+    "budget": {
+      "description": "Minimize cost, use haiku where possible",
+      "routing": {
+        "research": "sonnet",
+        "planning": "sonnet",
+        "execution": "haiku",
+        "verification": "sonnet",
+        "simple_tasks": "haiku"
+      },
+      "agents": {
+        "build-fixer": "build-fixer-low",
+        "security-reviewer": "security-reviewer-low",
+        "code-reviewer": "code-reviewer-low"
+      }
+    }
+  },
+
+  "execution": {
+    "autoFixBuildErrors": true,
+    "autoSecurityReview": true,
+    "autoCodeReview": false,
+    "maxBuildFixAttempts": 3,
+    "enableTDD": false
+  },
+
+  "verification": {
+    "ralplanMaxIterations": 5,
+    "architectLeniency": 0.8,
+    "requireSecurityPass": true
+  }
 }

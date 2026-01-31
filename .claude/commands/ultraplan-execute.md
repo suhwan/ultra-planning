@@ -1,6 +1,6 @@
 ---
 name: ultraplan:execute
-description: Execute tasks from a PLAN.md file with Executor/Architect verification loop
+description: Execute tasks from a PLAN.md file with Executor/Architect verification loop and automated quality gates
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
 ---
 
@@ -315,6 +315,20 @@ FOR each task in queue (ordered by wave):
   5. On failure (Executor or Architect):
      - Retry up to 3 times with feedback
      - If max retries exceeded: prompt user for action
+
+  6. On build/type errors -> Auto-fix with build-fixer:
+     Task(
+       subagent_type="build-fixer",
+       model=config.agents.build-fixer,  // from .ultraplan/config.json
+       prompt="Fix build errors: {errors}"
+     )
+
+  7. After all tasks complete -> Security review:
+     Task(
+       subagent_type="security-reviewer",
+       model=config.agents.security-reviewer,
+       prompt="Review security for: {modified_files}"
+     )
 ```
 
 **Retry Logic:**
@@ -468,6 +482,141 @@ Task(
 ```
 
 See: `.claude/agents/ultraplan-architect.md`
+
+### Build Fixer (Auto-recovery)
+
+When executor encounters build/type errors, automatically invoke build-fixer:
+
+```javascript
+// Triggered on: TypeScript errors, build failures, lint errors
+Task(
+  subagent_type="build-fixer",  // or "build-fixer-low" in budget mode
+  model="sonnet",  // from config.profiles[modelProfile].agents.build-fixer
+  prompt="""
+## Build Errors
+${BUILD_ERRORS}
+
+## Modified Files
+${MODIFIED_FILES}
+
+## Instructions
+Fix the build errors with minimal changes.
+Do NOT change architecture or add features.
+Focus only on getting the build green.
+"""
+)
+```
+
+**Configuration** (`.ultraplan/config.json`):
+```json
+{
+  "execution": {
+    "autoFixBuildErrors": true,
+    "maxBuildFixAttempts": 3
+  }
+}
+```
+
+### Security Reviewer (Post-execution)
+
+After all tasks complete, run security review:
+
+```javascript
+// Triggered after: All tasks in plan complete
+Task(
+  subagent_type="security-reviewer",  // or "security-reviewer-low" in budget mode
+  model="opus",  // from config
+  prompt="""
+## Modified Files
+${ALL_MODIFIED_FILES}
+
+## Review Focus
+- OWASP Top 10 vulnerabilities
+- Secrets and credentials
+- Unsafe patterns
+- Input validation
+
+## Output
+Return SECURITY PASS or SECURITY ISSUES with findings.
+"""
+)
+```
+
+**Configuration** (`.ultraplan/config.json`):
+```json
+{
+  "execution": {
+    "autoSecurityReview": true
+  },
+  "verification": {
+    "requireSecurityPass": true
+  }
+}
+```
+
+### Code Reviewer (Optional)
+
+Optional code quality review:
+
+```javascript
+// Triggered if: config.execution.autoCodeReview = true
+Task(
+  subagent_type="code-reviewer",
+  model="opus",
+  prompt="""
+## Modified Files
+${ALL_MODIFIED_FILES}
+
+## Review Focus
+- Code quality
+- Maintainability
+- Patterns and conventions
+"""
+)
+```
+
+### TDD Guide (--tdd flag)
+
+When running with `--tdd` flag:
+
+```javascript
+// Before each task execution
+Task(
+  subagent_type="tdd-guide",
+  model="sonnet",
+  prompt="""
+## Task
+${TASK}
+
+## Instructions
+1. Write failing tests first
+2. Verify tests fail
+3. Then implement
+4. Verify tests pass
+"""
+)
+```
+
+**Usage:**
+```bash
+/ultraplan:execute 03-01 --tdd
+```
+
+## Model Profiles
+
+Execution uses model routing from `.ultraplan/config.json`:
+
+| Profile | Execution | Build-fixer | Security |
+|---------|-----------|-------------|----------|
+| `quality` | opus | build-fixer | security-reviewer |
+| `balanced` | sonnet | build-fixer | security-reviewer-low |
+| `budget` | haiku | build-fixer-low | security-reviewer-low |
+
+**Switch Profile:**
+```bash
+# Edit .ultraplan/config.json
+"modelProfile": "budget"  # quality | balanced | budget
+```
 
 ## Related Commands
 
