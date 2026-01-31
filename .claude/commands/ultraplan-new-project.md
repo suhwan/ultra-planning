@@ -58,15 +58,17 @@ ls -la .planning/PROJECT.md
 
 **Skip if `--skip-research` flag is set.**
 
+**Uses GSD Project Researcher for comprehensive domain research with Context7 support.**
+
 ```javascript
 Task(
-  subagent_type="ultraplan-researcher",
+  subagent_type="gsd-project-researcher",
   model="opus",
   prompt="""
-## Mode
-PROJECT-RESEARCH (for new project initialization)
+## Research Type
+Ecosystem research for new project initialization
 
-## Project Hint
+## Project Description
 ${user_description_or_directory_name}
 
 ## Environment
@@ -77,10 +79,15 @@ Directory name: ${basename}
 ${brownfield_or_greenfield}
 
 ## Instructions
-1. Investigate codebase (if brownfield)
-2. Research domain and technologies
-3. Identify patterns, risks, unknowns
-4. Write findings to .planning/research/PROJECT-RESEARCH.md
+1. Survey the domain ecosystem (stack, features, architecture, pitfalls)
+2. Use Context7 for library documentation verification
+3. Apply source hierarchy: Context7 → Official Docs → WebSearch
+4. Write files to .planning/research/:
+   - SUMMARY.md (executive summary with roadmap implications)
+   - STACK.md (technology recommendations)
+   - FEATURES.md (table stakes vs differentiators)
+   - ARCHITECTURE.md (system structure patterns)
+   - PITFALLS.md (domain pitfalls and prevention)
 
 ## Output
 Return RESEARCH COMPLETE or RESEARCH BLOCKED
@@ -97,9 +104,11 @@ Return RESEARCH COMPLETE or RESEARCH BLOCKED
 
 ## Step 3: Planner Interview + Document Generation
 
+**Uses GSD Planner for logical context-based task division.**
+
 ```javascript
 Task(
-  subagent_type="ultraplan-planner",
+  subagent_type="gsd-planner",
   model="opus",
   prompt="""
 ## Mode
@@ -109,7 +118,7 @@ NEW-PROJECT (full interview flow)
 ${user_description_or_directory_name}
 
 ## Research Findings
-${research_content}  // from Step 2
+${research_content}  // from Step 2 (SUMMARY.md, STACK.md, FEATURES.md, etc.)
 
 ## Environment
 Current directory: ${pwd}
@@ -118,9 +127,10 @@ Existing Code: ${brownfield_or_greenfield}
 
 ## Instructions
 1. Begin interview - ask ONE question at a time using AskUserQuestion tool
-2. After 5-7 questions or user says "make the plan", generate documents
-3. Write PROJECT.md, ROADMAP.md, STATE.md to .planning/
-4. Display summary
+2. After gathering sufficient context, generate documents
+3. Apply goal-backward methodology for phase derivation
+4. Write PROJECT.md, ROADMAP.md, STATE.md to .planning/
+5. Ensure logical context-based task grouping
 
 Begin now with your first question.
 """
@@ -219,7 +229,7 @@ Return:
 
 ```javascript
 Task(
-  subagent_type="ultraplan-planner",
+  subagent_type="gsd-planner",
   model="opus",
   prompt="""
 ## Mode
@@ -241,6 +251,7 @@ ${CRITIC_CONCERNS}
 1. Address each concern
 2. Update PROJECT.md and/or ROADMAP.md
 3. Respond to questions explicitly
+4. Maintain logical context-based task grouping
 
 Return revised documents.
 """

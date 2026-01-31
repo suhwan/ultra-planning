@@ -79,14 +79,13 @@ ls "${PHASE_DIR}"/*-RESEARCH.md 2>/dev/null
 
 **If RESEARCH.md missing:**
 
+**Uses GSD Phase Researcher for comprehensive phase research with Context7 support.**
+
 ```javascript
 Task(
-  subagent_type="ultraplan-researcher",
+  subagent_type="gsd-phase-researcher",
   model="opus",
   prompt="""
-## Mode
-PHASE-RESEARCH (for phase planning)
-
 ## Phase
 Phase ${phase_number}: ${PHASE_GOAL}
 
@@ -98,9 +97,16 @@ ${SUCCESS_CRITERIA}
 
 ## Instructions
 1. Investigate existing codebase for relevant patterns
-2. Research technologies/APIs needed for this phase
-3. Identify risks and unknowns
-4. Write findings to ${PHASE_DIR}/${phase_number}-RESEARCH.md
+2. Research technologies/APIs needed for this phase using Context7
+3. Apply source hierarchy: Context7 → Official Docs → WebSearch
+4. Identify standard stack, patterns, and pitfalls
+5. Write RESEARCH.md with sections:
+   - Standard Stack (libraries with versions)
+   - Architecture Patterns
+   - Don't Hand-Roll (existing solutions to use)
+   - Common Pitfalls
+   - Code Examples
+6. Write findings to ${PHASE_DIR}/${phase_number}-RESEARCH.md
 
 ## Output
 Return RESEARCH COMPLETE or RESEARCH BLOCKED
@@ -168,9 +174,11 @@ DEPENDS=$(sed -n "/^### Phase ${phase_number}:/,/^### Phase/p" .planning/ROADMAP
 PROJECT_CONTEXT=$(cat .planning/PROJECT.md)
 ```
 
+**Uses GSD Planner for logical context-based task division.**
+
 ```javascript
 Task(
-  subagent_type="ultraplan-planner",
+  subagent_type="gsd-planner",
   model="opus",
   prompt="""
 You are planning Phase ${phase_number}: ${PHASE_GOAL}
@@ -200,8 +208,9 @@ Naming: ${phase_number}-01-PLAN.md, ${phase_number}-02-PLAN.md, etc.
 ## Instructions
 
 1. **Break Phase into 2-3 Task Groups (PLAN.md files):**
+   - Apply logical context-based task grouping
    - Each PLAN.md should represent a cohesive unit of work (30-90 minutes total)
-   - Group related tasks together (e.g., "Templates", "Agent Logic", "Integration")
+   - Group related tasks together by context (e.g., "Templates", "Agent Logic", "Integration")
    - Name plans descriptively: ${phase_number}-01-{name}.md, ${phase_number}-02-{name}.md
 
 2. **Apply Task Decomposition:**
@@ -222,7 +231,7 @@ Naming: ${phase_number}-01-PLAN.md, ${phase_number}-02-PLAN.md, etc.
 
 5. **Write PLAN.md files:**
    - Location: ${PHASE_DIR}/${phase_number}-01-{name}.md, ${phase_number}-02-{name}.md, etc.
-   - Follow standard PLAN.md structure (see ultraplan-planner.md)
+   - Follow standard PLAN.md structure
    - Use XML task format with name, files, action, verify, done fields
 
 ## Output
@@ -242,6 +251,7 @@ Each PLAN.md must include:
 ## Quality Checklist
 
 Before finalizing:
+- [ ] Logical context-based task grouping applied
 - [ ] Each task is 15-60 minutes (not too small, not too large)
 - [ ] Tasks use imperative language ("Create X", "Implement Y")
 - [ ] File paths are specific, not patterns
@@ -379,7 +389,7 @@ Return:
 
 ```javascript
 Task(
-  subagent_type="ultraplan-planner",
+  subagent_type="gsd-planner",
   model="opus",
   prompt="""
 ## Mode
@@ -401,6 +411,7 @@ ${CRITIC_CONCERNS}
 2. Make targeted updates (don't rewrite from scratch)
 3. Respond to Critic's questions explicitly
 4. Update must_haves if needed
+5. Maintain logical context-based task grouping
 
 Return revised PLAN.md files.
 """
