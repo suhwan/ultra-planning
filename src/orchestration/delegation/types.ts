@@ -172,7 +172,7 @@ export const DELEGATION_CATEGORIES: Record<DelegationCategory, CategoryConfig> =
     displayName: 'Writing',
     description: 'Documentation and technical writing',
     model: {
-      tier: 'haiku',
+      tier: 'sonnet',
       temperature: 0.5,
       thinkingBudget: 'medium',
     },
@@ -247,7 +247,7 @@ export const CATEGORY_AGENTS: Record<DelegationCategory, AgentRecommendation> = 
   },
   writing: {
     agent: 'writer',
-    model: 'haiku',
-    reason: 'Documentation is straightforward',
+    model: 'sonnet',
+    reason: 'Documentation requires accuracy and completeness',
   },
 };

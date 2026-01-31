@@ -89,6 +89,9 @@ describe('Delegation Manager', () => {
       const ultrabrainConfig = getCategoryConfig('ultrabrain');
       expect(ultrabrainConfig.model.tier).toBe('opus');
       expect(ultrabrainConfig.model.thinkingBudget).toBe('max');
+
+      const writingConfig = getCategoryConfig('writing');
+      expect(writingConfig.model.tier).toBe('sonnet');
     });
   });
 
