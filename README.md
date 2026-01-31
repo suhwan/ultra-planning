@@ -154,6 +154,366 @@ GSD 플랜 생성 + Architect 검토 + 병렬 실행 자동화:
 /thorough from 3           # Phase 3부터 실행
 ```
 
+## Scenario Flows (상세 시나리오)
+
+### 시나리오 1: 새 프로젝트 시작 (`/ultraplan:new-project`)
+
+```
+사용자: "TODO 앱 만들어줘"
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Research Phase (4개 병렬 에이전트)                         │
+├─────────────────────────────────────────────────────────────┤
+│  ├── gsd-project-researcher (domain)     → DOMAIN.md        │
+│  ├── gsd-project-researcher (ecosystem)  → ECOSYSTEM.md     │
+│  ├── gsd-project-researcher (patterns)   → PATTERNS.md      │
+│  └── gsd-project-researcher (risks)      → RISKS.md         │
+│                     ↓                                        │
+│  gsd-research-synthesizer                → SUMMARY.md        │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Planning Phase                                            │
+├─────────────────────────────────────────────────────────────┤
+│  gsd-roadmapper:                                             │
+│    - 요구사항 분석                                            │
+│    - 단계(Phase) 분할                                         │
+│    - 성공 기준 정의                                           │
+│         ↓                                                    │
+│  생성 파일:                                                   │
+│    .planning/PROJECT.md      ← 프로젝트 개요                  │
+│    .planning/REQUIREMENTS.md ← 요구사항                       │
+│    .planning/ROADMAP.md      ← 단계별 계획                    │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+결과: .planning/ 디렉토리 구조 생성 완료
+```
+
+### 시나리오 2: 단계 계획 (`/ultraplan:plan-phase 1`)
+
+```
+사용자: "/ultraplan:plan-phase 1"
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Context Collection (collector.ts)                         │
+├─────────────────────────────────────────────────────────────┤
+│  collectContext({                                            │
+│    planId: '01-01',                                          │
+│    includeProject: true,                                     │
+│    includePhase: true                                        │
+│  })                                                          │
+│         ↓                                                    │
+│  수집:                                                        │
+│    - PROJECT.md (프로젝트 비전)                               │
+│    - REQUIREMENTS.md (요구사항)                               │
+│    - ROADMAP.md (전체 로드맵)                                 │
+│    - 이전 Phase SUMMARY.md (있으면)                           │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Research (gsd-phase-researcher)                           │
+├─────────────────────────────────────────────────────────────┤
+│  - 구현 방법 조사                                             │
+│  - 기술 선택 분석                                             │
+│  - 의존성 파악                                                │
+│         ↓                                                    │
+│  생성: .planning/phases/01-setup/RESEARCH.md                 │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Planning (gsd-planner)                                    │
+├─────────────────────────────────────────────────────────────┤
+│  Context Injection (injector.ts):                            │
+│    injectPlannerContext(ctx) → {                             │
+│      sections: [Project, Requirements, Roadmap, Research],   │
+│      totalTokens: ~5000                                      │
+│    }                                                         │
+│         ↓                                                    │
+│  태스크 분해:                                                 │
+│    - Wave 1: 병렬 실행 가능한 태스크들                         │
+│    - Wave 2: Wave 1 완료 후 실행할 태스크들                    │
+│    - ...                                                     │
+│         ↓                                                    │
+│  생성: .planning/phases/01-setup/01-01-PLAN.md               │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 4. Verification (gsd-plan-checker)                           │
+├─────────────────────────────────────────────────────────────┤
+│  체크리스트:                                                  │
+│    ✓ goalsAligned: Phase 목표와 일치?                        │
+│    ✓ tasksAtomic: 태스크가 원자적?                           │
+│    ✓ dependenciesClear: 의존성 명확?                         │
+│    ✓ waveStructure: Wave 구조 올바름?                        │
+│    ✓ verifiable: 검증 가능?                                  │
+│         ↓                                                    │
+│  80% 이상 통과 → APPROVED                                    │
+│  미만 → REJECTED (수정 후 재검토)                             │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+결과: 01-01-PLAN.md 생성 완료
+```
+
+### 시나리오 3: 실행 (`/ultraplan:execute`)
+
+```
+사용자: "/ultraplan:execute"
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Task Loading (parse_plan, get_execution_order)            │
+├─────────────────────────────────────────────────────────────┤
+│  PLAN.md 파싱:                                               │
+│    - Wave 1: [task-01, task-02, task-03]                    │
+│    - Wave 2: [task-04, task-05]                             │
+│                                                              │
+│  의존성 맵 구축 (build_dependency_map):                       │
+│    task-04 blockedBy: [task-01, task-02, task-03]           │
+│    task-05 blockedBy: [task-01, task-02, task-03]           │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Wave 1 Execution (병렬)                                   │
+├─────────────────────────────────────────────────────────────┤
+│  Context Injection for Workers:                              │
+│    injectWorkerContext(ctx) → {                              │
+│      sections: [Task, Plan, Learnings],                      │
+│      totalTokens: ~2000                                      │
+│    }                                                         │
+│         ↓                                                    │
+│  병렬 실행:                                                   │
+│    ├── Worker 1 (task-01): npm init -y                      │
+│    ├── Worker 2 (task-02): tsconfig.json 생성               │
+│    └── Worker 3 (task-03): .eslintrc 설정                   │
+│         ↓                                                    │
+│  각 Worker 완료 시:                                           │
+│    - Architect 검증 (injectArchitectContext)                 │
+│    - 통과 → complete_swarm_task                              │
+│    - 실패 → 수정 후 재검증                                    │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Wave 2 Execution (Wave 1 완료 후)                         │
+├─────────────────────────────────────────────────────────────┤
+│  병렬 실행:                                                   │
+│    ├── Worker 1 (task-04): Vitest 설정                      │
+│    └── Worker 2 (task-05): src/ 구조 생성                   │
+│         ↓                                                    │
+│  Wisdom 기록 (during execution):                             │
+│    add_learning("vitest는 vite.config에서 test 설정 필요")   │
+│    add_decision("src/index.ts를 진입점으로 사용")             │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 4. Phase Completion                                          │
+├─────────────────────────────────────────────────────────────┤
+│  complete_phase(1, "Project Setup"):                         │
+│    - Git tag: ultraplan-phase-1-complete                    │
+│    - Checkpoint 생성                                         │
+│         ↓                                                    │
+│  Verification (gsd-verifier):                                │
+│    - Phase 목표 달성 확인                                     │
+│    - 생성: VERIFICATION.md                                   │
+│         ↓                                                    │
+│  Summary 생성:                                                │
+│    - .planning/phases/01-setup/01-01-SUMMARY.md             │
+│    - Wisdom merge to project level                           │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+결과: Phase 1 완료, ROADMAP.md 체크박스 업데이트
+```
+
+### 시나리오 4: Thorough 모드 (`/thorough all`)
+
+```
+사용자: "/thorough all"
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 완전 자동화 모드 (사용자 입력 없음)                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Phase 1 ─────────────────────────────────────────────────  │
+│    ├── /gsd:plan-phase 1                                    │
+│    ├── /gsd:execute-phase 1                                 │
+│    ├── Architect 검증                                        │
+│    ├── Git commit: "feat(phase-1): complete Project Setup"  │
+│    └── ROADMAP.md 체크박스 업데이트                          │
+│         ↓                                                    │
+│  Phase 2 ─────────────────────────────────────────────────  │
+│    ├── /gsd:plan-phase 2                                    │
+│    ├── /gsd:execute-phase 2                                 │
+│    ├── Architect 검증                                        │
+│    ├── Git commit: "feat(phase-2): complete Core Domain"    │
+│    └── ROADMAP.md 체크박스 업데이트                          │
+│         ↓                                                    │
+│  ... (모든 Phase 반복) ...                                   │
+│         ↓                                                    │
+│  Phase N (마지막) ────────────────────────────────────────  │
+│    ├── /gsd:plan-phase N                                    │
+│    ├── /gsd:execute-phase N                                 │
+│    ├── Architect 검증                                        │
+│    ├── Git commit: "feat(phase-N): complete Final Phase"    │
+│    └── ROADMAP.md 모든 체크박스 완료                         │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+결과: 전체 프로젝트 완료, 모든 Phase 커밋됨
+```
+
+**자동 결정 규칙:**
+| 상황 | 자동 결정 |
+|------|----------|
+| 구현 방법 선택 | 가장 단순한 방법 |
+| 라이브러리 선택 | 프로젝트 기존 것 사용 |
+| y/n 확인 | 항상 y |
+| 3개 이상 멈춤 | 중단 |
+
+### 시나리오 5: Fresh Start (컨텍스트 복구)
+
+```
+상황: 대화 컨텍스트 초과 또는 새 세션 시작
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Context Compaction (compactor.ts)                         │
+├─────────────────────────────────────────────────────────────┤
+│  compactContext(ctx):                                        │
+│    입력: ~20,000 tokens                                      │
+│         ↓                                                    │
+│    압축:                                                      │
+│      - 프로젝트 요약 (1문장)                                  │
+│      - 현재 Phase 상태                                        │
+│      - 진행 중인 태스크                                       │
+│      - 중요 결정사항                                          │
+│      - 학습 내용                                              │
+│      - 미해결 이슈                                            │
+│         ↓                                                    │
+│    출력: ~150 tokens (99% 압축)                              │
+│                                                              │
+│  saveContextSnapshot(compacted):                             │
+│    → .ultraplan/snapshots/{id}.json                         │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Context Restoration (새 세션)                             │
+├─────────────────────────────────────────────────────────────┤
+│  restoreContext(snapshotId):                                 │
+│    ← .ultraplan/snapshots/{id}.json                         │
+│         ↓                                                    │
+│  formatCompactedContext(restored):                           │
+│    """                                                       │
+│    ## Session Context (Restored)                             │
+│                                                              │
+│    ### Project Summary                                       │
+│    Ultra Planner v3.0 - Context Architect 패턴 구현          │
+│                                                              │
+│    ### Phase State                                           │
+│    Phase 7/7: Integration Testing                            │
+│    Status: in_progress                                       │
+│    Progress: 80%                                             │
+│                                                              │
+│    ### Current Work                                          │
+│    - Task 01-07-03: E2E 테스트 작성                          │
+│                                                              │
+│    ### Key Decisions                                         │
+│    - isHint 패턴으로 AI 결정권 보장                           │
+│                                                              │
+│    ~150 tokens (compressed from ~20,000)                    │
+│    """                                                       │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+결과: 새 세션에서 컨텍스트 복구 완료, 작업 계속
+```
+
+### 시나리오 6: Hints 사용 (AI 결정 지원)
+
+```
+에이전트: "이 태스크 어떻게 처리할까?"
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ getTaskHints() 호출                                          │
+├─────────────────────────────────────────────────────────────┤
+│  입력:                                                        │
+│    taskDescription: "OAuth 인증 구현"                        │
+│    files: ["auth.ts", "middleware.ts", "routes.ts"]         │
+│         ↓                                                    │
+│  suggestComplexity():                                        │
+│    {                                                         │
+│      isHint: true,  ← AI가 최종 결정                         │
+│      level: 4,                                               │
+│      category: "feature",                                    │
+│      confidence: 0.75                                        │
+│    }                                                         │
+│         ↓                                                    │
+│  suggestRoute():                                             │
+│    {                                                         │
+│      isHint: true,  ← AI가 최종 결정                         │
+│      agent: "executor-high",                                 │
+│      model: "opus",                                          │
+│      confidence: 0.80                                        │
+│    }                                                         │
+│         ↓                                                    │
+│  출력:                                                        │
+│    """                                                       │
+│    ═══ Ultra Planner Hints ═══                              │
+│    These are SUGGESTIONS only.                               │
+│    Use your judgment to decide.                              │
+│                                                              │
+│    Complexity: 4/5 (75% confidence)                         │
+│    Agent: executor-high                                      │
+│    Model: opus                                               │
+│    """                                                       │
+└─────────────────────────────────────────────────────────────┘
+         ↓
+AI: Hints 참고하여 최종 결정 (executor-high/opus 또는 다른 선택)
+```
+
+### 전체 아키텍처 흐름도
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Ultra Planner v3.0                            │
+│                  "Context Architect Pattern"                     │
+│              실행하지 않는다. 맥락을 설계한다.                      │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         ▼                    ▼                    ▼
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│   Context   │      │    Hints    │      │   Prompts   │
+│   Module    │      │   Module    │      │   Module    │
+├─────────────┤      ├─────────────┤      ├─────────────┤
+│ collector   │      │ complexity  │      │ worker      │
+│ injector    │      │ routing     │      │ orchestrator│
+│ compactor   │      │ model       │      │             │
+└──────┬──────┘      └──────┬──────┘      └──────┬──────┘
+       │                    │                    │
+       └────────────────────┼────────────────────┘
+                            ▼
+              ┌─────────────────────────┐
+              │      MCP Server         │
+              │     (70+ Tools)         │
+              ├─────────────────────────┤
+              │ Context:                │
+              │   collect_*, inject_*   │
+              │ Hints:                  │
+              │   suggest_*, get_hints  │
+              │ Wisdom:                 │
+              │   add_*, get_wisdom     │
+              │ Orchestration:          │
+              │   swarm_*, pipeline_*   │
+              └───────────┬─────────────┘
+                          ▼
+              ┌─────────────────────────┐
+              │   GSD/OMC Integration   │
+              ├─────────────────────────┤
+              │ /thorough all           │
+              │ /gsd:plan-phase         │
+              │ /gsd:execute-phase      │
+              │ /oh-my-claudecode:*     │
+              └─────────────────────────┘
+```
+
+---
+
 ## Architecture
 
 ```
