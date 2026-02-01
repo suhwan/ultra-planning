@@ -56,7 +56,7 @@ export interface AgentSelection {
 }
 
 /** Default registry path relative to home directory */
-export const DEFAULT_REGISTRY_DIR = 'registry';
+export const DEFAULT_REGISTRY_DIR = '.claude/registry';
 
 /** Skills subdirectory within registry */
 export const SKILLS_SUBDIR = 'skills';
