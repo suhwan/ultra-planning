@@ -144,6 +144,72 @@ import {
   generatePipelineSessionId,
 } from './orchestration/pipeline/index.js';
 
+// Import pipeline state functions
+import {
+  initPipelineSession,
+  startPipelineStage,
+  completePipelineStage,
+  getStageInput,
+  getPipelineState,
+  endPipelineSession,
+} from './orchestration/pipeline/index.js';
+
+// Import pipeline types for handlers
+import type { Pipeline, PipelineStatus } from './orchestration/pipeline/types.js';
+
+// Import ultrapilot functions
+import {
+  initUltrapilot,
+  getUltrapilotState,
+  updateUltrapilotState,
+  endUltrapilot,
+  spawnWorker,
+  completeWorker,
+  failWorker,
+  assignFile,
+  releaseFile,
+  getOwnerOf,
+  hasConflicts,
+  canSpawnMore,
+  getActiveWorkers,
+} from './orchestration/ultrapilot/index.js';
+
+// Import swarm state functions
+import {
+  initSwarmSession,
+  addSwarmTasks,
+  claimSwarmTask,
+  completeSwarmTask,
+  releaseSwarmTask,
+  getSwarmState,
+  endSwarmSession,
+} from './orchestration/swarm/index.js';
+
+// Import ultrawork functions
+import {
+  initUltraWorkSession,
+  getParallelTasks,
+  spawnUltraWorkWorker,
+  completeUltraWorkWorker,
+  failUltraWorkWorker,
+  getUltraWorkProgress,
+  endUltraWorkSession,
+} from './orchestration/ultrawork/index.js';
+
+// Import ecomode functions
+import {
+  analyzeTaskComplexity,
+  getEcoModelRecommendation,
+  initEcoModeSession,
+  trackEcoUsage,
+  getEcoStats,
+  getEcoState,
+  getEcoAvailableTasks,
+  spawnEcoWorker,
+  completeEcoWorker,
+  endEcoSession,
+} from './orchestration/ecomode/index.js';
+
 // Import hints functions (v3.0 - Context Architect)
 import {
   suggestComplexity,
@@ -1092,6 +1158,249 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
 
+      // === Pipeline State Management ===
+      {
+        name: 'init_pipeline_session',
+        description: 'Initialize a pipeline session for sequential stage execution.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            pipeline: {
+              type: 'object',
+              description: 'Pipeline definition with name, description, stages',
+              properties: {
+                name: { type: 'string' },
+                description: { type: 'string' },
+                stages: { type: 'array' },
+                initialInput: { type: 'string' },
+                stopOnFailure: { type: 'boolean' },
+              },
+              required: ['name', 'stages'],
+            },
+          },
+          required: ['pipeline'],
+        },
+      },
+      {
+        name: 'start_pipeline_stage',
+        description: 'Start a pipeline stage. Returns stage definition with input from previous stage.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            stageIndex: { type: 'number', description: 'Stage index (0-based)' },
+          },
+          required: ['stageIndex'],
+        },
+      },
+      {
+        name: 'complete_pipeline_stage',
+        description: 'Complete a pipeline stage with output. Output is passed to next stage.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            stageIndex: { type: 'number', description: 'Stage index' },
+            success: { type: 'boolean', description: 'Whether stage succeeded' },
+            output: { type: 'string', description: 'Stage output (passed to next stage)' },
+            error: { type: 'string', description: 'Error message if failed' },
+            executionTimeMs: { type: 'number', description: 'Execution time in ms' },
+          },
+          required: ['stageIndex', 'success'],
+        },
+      },
+      {
+        name: 'get_stage_input',
+        description: 'Get input for a specific stage (previous stage output or initial input).',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            stageIndex: { type: 'number', description: 'Stage index' },
+          },
+          required: ['stageIndex'],
+        },
+      },
+      {
+        name: 'get_pipeline_state',
+        description: 'Get current pipeline state including all stage results.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'end_pipeline_session',
+        description: 'End the pipeline session.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            status: { type: 'string', enum: ['completed', 'failed', 'cancelled'], description: 'Final status' },
+          },
+          required: [],
+        },
+      },
+
+      // === UltraWork (Wave-based Parallel Execution) ===
+      {
+        name: 'init_ultrawork_session',
+        description: 'Initialize UltraWork session for wave-based parallel execution.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            tasks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  action: { type: 'string' },
+                  files: { type: 'array', items: { type: 'string' } },
+                  wave: { type: 'number' },
+                },
+                required: ['id', 'name', 'action', 'files', 'wave'],
+              },
+              description: 'Tasks with wave assignments',
+            },
+            maxWorkers: { type: 'number', description: 'Max parallel workers (default: 5)' },
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['tasks'],
+        },
+      },
+      {
+        name: 'get_parallel_tasks',
+        description: 'Get tasks available for parallel execution in current wave.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'spawn_ultrawork_worker',
+        description: 'Spawn a worker to execute a task.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskId: { type: 'string', description: 'Task ID to execute' },
+          },
+          required: ['taskId'],
+        },
+      },
+      {
+        name: 'complete_ultrawork_worker',
+        description: 'Mark a worker as completed.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            workerId: { type: 'string', description: 'Worker ID' },
+            output: { type: 'string', description: 'Task output' },
+          },
+          required: ['workerId'],
+        },
+      },
+      {
+        name: 'fail_ultrawork_worker',
+        description: 'Mark a worker as failed.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            workerId: { type: 'string', description: 'Worker ID' },
+            error: { type: 'string', description: 'Error message' },
+          },
+          required: ['workerId', 'error'],
+        },
+      },
+      {
+        name: 'get_ultrawork_progress',
+        description: 'Get UltraWork progress including wave status.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'end_ultrawork_session',
+        description: 'End UltraWork session.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+
+      // === EcoMode (Token-Efficient Parallel Execution) ===
+      {
+        name: 'analyze_task_complexity',
+        description: 'Analyze task complexity and get model recommendation. Uses heuristics for fast estimation.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskDescription: { type: 'string', description: 'Task description' },
+            files: { type: 'array', items: { type: 'string' }, description: 'Files to modify' },
+          },
+          required: ['taskDescription'],
+        },
+      },
+      {
+        name: 'get_eco_model_recommendation',
+        description: 'Get model recommendation with concurrent limit and rationale for a complexity level.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            complexity: { type: 'number', description: 'Complexity level (1-5)' },
+          },
+          required: ['complexity'],
+        },
+      },
+      {
+        name: 'init_ecomode_session',
+        description: 'Initialize EcoMode session. Tasks are auto-analyzed for complexity and model assignment.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            tasks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  action: { type: 'string' },
+                  files: { type: 'array', items: { type: 'string' } },
+                },
+                required: ['id', 'name', 'action', 'files'],
+              },
+              description: 'Tasks to execute',
+            },
+            planPath: { type: 'string', description: 'Path to plan file' },
+          },
+          required: ['tasks'],
+        },
+      },
+      {
+        name: 'track_eco_usage',
+        description: 'Track token usage for a completed task.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskId: { type: 'string', description: 'Task ID' },
+            tokensUsed: { type: 'number', description: 'Tokens used' },
+          },
+          required: ['taskId', 'tokensUsed'],
+        },
+      },
+      {
+        name: 'get_eco_stats',
+        description: 'Get EcoMode statistics including tokens used and estimated savings.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+
       // === Context Collection (v3.0) ===
       {
         name: 'collect_project_context',
@@ -1185,6 +1494,199 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             projectPath: { type: 'string', description: 'Project path (default: current directory)' },
           },
+          required: [],
+        },
+      },
+
+      // === Ultrapilot (Parallel Worker Coordination) ===
+      {
+        name: 'init_ultrapilot',
+        description: 'Initialize Ultrapilot session for parallel worker coordination. Creates state file and ownership tracker.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            originalTask: { type: 'string', description: 'The main task being parallelized' },
+            subtasks: { type: 'array', items: { type: 'string' }, description: 'List of subtasks to distribute' },
+            maxWorkers: { type: 'number', description: 'Max concurrent workers (default: 5)' },
+          },
+          required: ['originalTask', 'subtasks'],
+        },
+      },
+      {
+        name: 'get_ultrapilot_state',
+        description: 'Get current Ultrapilot session state including workers and file ownership.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'spawn_ultrapilot_worker',
+        description: 'Spawn a new worker with assigned files. Returns null if max workers reached or files conflict.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            task: { type: 'string', description: 'Task for this worker' },
+            files: { type: 'array', items: { type: 'string' }, description: 'Files this worker will own' },
+          },
+          required: ['task', 'files'],
+        },
+      },
+      {
+        name: 'complete_ultrapilot_worker',
+        description: 'Mark a worker as completed and release its file ownership.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            workerId: { type: 'string', description: 'Worker ID to complete' },
+          },
+          required: ['workerId'],
+        },
+      },
+      {
+        name: 'fail_ultrapilot_worker',
+        description: 'Mark a worker as failed with error message and release its files.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            workerId: { type: 'string', description: 'Worker ID that failed' },
+            error: { type: 'string', description: 'Error message' },
+          },
+          required: ['workerId', 'error'],
+        },
+      },
+      {
+        name: 'assign_ultrapilot_file',
+        description: 'Assign a file to a worker. Returns false if file already owned.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            workerId: { type: 'string', description: 'Worker ID' },
+            filePath: { type: 'string', description: 'File path to assign' },
+          },
+          required: ['workerId', 'filePath'],
+        },
+      },
+      {
+        name: 'release_ultrapilot_file',
+        description: 'Release a file from worker ownership.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            filePath: { type: 'string', description: 'File path to release' },
+          },
+          required: ['filePath'],
+        },
+      },
+      {
+        name: 'check_ultrapilot_conflicts',
+        description: 'Check if any files conflict between workers.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'end_ultrapilot',
+        description: 'End Ultrapilot session and clean up state files.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+
+      // === Swarm (Parallel Worker Coordination with Task Pool) ===
+      {
+        name: 'init_swarm_session',
+        description: 'Initialize a swarm session for parallel task execution. Tasks are claimed atomically by workers.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            planPath: { type: 'string', description: 'Path to the plan file' },
+            maxWorkers: { type: 'number', description: 'Max concurrent workers (default: 5)' },
+            workerTimeoutMs: { type: 'number', description: 'Worker timeout in ms (default: 300000 = 5 min)' },
+          },
+          required: ['planPath'],
+        },
+      },
+      {
+        name: 'add_swarm_tasks',
+        description: 'Add tasks to the swarm pool. Tasks with blockedBy are marked pending until dependencies complete.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            tasks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  subject: { type: 'string' },
+                  description: { type: 'string' },
+                  wave: { type: 'number' },
+                  blockedBy: { type: 'array', items: { type: 'string' } },
+                },
+                required: ['id', 'subject', 'description'],
+              },
+              description: 'Tasks to add to the pool',
+            },
+          },
+          required: ['tasks'],
+        },
+      },
+      {
+        name: 'claim_swarm_task',
+        description: 'Atomically claim the next available task. Returns null if no tasks available.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            workerId: { type: 'string', description: 'Worker ID claiming the task' },
+          },
+          required: ['workerId'],
+        },
+      },
+      {
+        name: 'complete_swarm_task',
+        description: 'Mark a claimed task as completed. Updates dependent task availability.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskId: { type: 'string', description: 'Task ID to complete' },
+            output: { type: 'string', description: 'Task output/summary' },
+            filesModified: { type: 'array', items: { type: 'string' }, description: 'Files modified' },
+          },
+          required: ['taskId'],
+        },
+      },
+      {
+        name: 'release_swarm_task',
+        description: 'Release a claimed task back to available. Use when worker cannot complete.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            taskId: { type: 'string', description: 'Task ID to release' },
+          },
+          required: ['taskId'],
+        },
+      },
+      {
+        name: 'get_swarm_state',
+        description: 'Get current swarm state including tasks, workers, and statistics.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'end_swarm_session',
+        description: 'End the swarm session and mark as completed.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
           required: [],
         },
       },
@@ -2200,6 +2702,224 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      // === Pipeline State Handlers ===
+      case 'init_pipeline_session': {
+        const pipeline = safeArgs.pipeline as Pipeline;
+        const state = initPipelineSession(pipeline);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state ? { success: true, state } : { success: false, error: 'Session already active' }),
+          }],
+        };
+      }
+
+      case 'start_pipeline_stage': {
+        const stageIndex = safeArgs.stageIndex as number;
+        const result = startPipelineStage(stageIndex);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result ? { success: true, ...result } : { success: false, error: 'Invalid stage or no session' }),
+          }],
+        };
+      }
+
+      case 'complete_pipeline_stage': {
+        const stageIndex = safeArgs.stageIndex as number;
+        const success = safeArgs.success as boolean;
+        const output = safeArgs.output as string | undefined;
+        const error = safeArgs.error as string | undefined;
+        const executionTimeMs = safeArgs.executionTimeMs as number | undefined;
+        const state = completePipelineStage(stageIndex, { success, output, error, executionTimeMs });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state ? { success: true, state } : { success: false, error: 'No active session' }),
+          }],
+        };
+      }
+
+      case 'get_stage_input': {
+        const stageIndex = safeArgs.stageIndex as number;
+        const input = getStageInput(stageIndex);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ input }),
+          }],
+        };
+      }
+
+      case 'get_pipeline_state': {
+        const state = getPipelineState();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state || { active: false }),
+          }],
+        };
+      }
+
+      case 'end_pipeline_session': {
+        const status = safeArgs.status as PipelineStatus | undefined;
+        const endSuccess = endPipelineSession(status);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success: endSuccess }),
+          }],
+        };
+      }
+
+      // === UltraWork Handlers ===
+      case 'init_ultrawork_session': {
+        const tasks = safeArgs.tasks as Array<{
+          id: string;
+          name: string;
+          action: string;
+          files: string[];
+          wave: number;
+        }>;
+        const maxWorkers = safeArgs.maxWorkers as number | undefined;
+        const planPath = safeArgs.planPath as string | undefined;
+        const state = initUltraWorkSession(tasks, { maxWorkers, planPath });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state ? { success: true, state } : { success: false, error: 'Session already active' }),
+          }],
+        };
+      }
+
+      case 'get_parallel_tasks': {
+        const tasks = getParallelTasks();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(tasks ? { success: true, tasks } : { success: false, tasks: [] }),
+          }],
+        };
+      }
+
+      case 'spawn_ultrawork_worker': {
+        const taskId = safeArgs.taskId as string;
+        const worker = spawnUltraWorkWorker(taskId);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(worker ? { success: true, worker } : { success: false, error: 'Cannot spawn worker' }),
+          }],
+        };
+      }
+
+      case 'complete_ultrawork_worker': {
+        const workerId = safeArgs.workerId as string;
+        const output = safeArgs.output as string | undefined;
+        const success = completeUltraWorkWorker(workerId, { output });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      case 'fail_ultrawork_worker': {
+        const workerId = safeArgs.workerId as string;
+        const error = safeArgs.error as string;
+        const success = failUltraWorkWorker(workerId, error);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      case 'get_ultrawork_progress': {
+        const progress = getUltraWorkProgress();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(progress || { active: false }),
+          }],
+        };
+      }
+
+      case 'end_ultrawork_session': {
+        const success = endUltraWorkSession();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      // === EcoMode Handlers ===
+      case 'analyze_task_complexity': {
+        const taskDescription = safeArgs.taskDescription as string;
+        const files = safeArgs.files as string[] | undefined;
+        const result = analyzeTaskComplexity(taskDescription, files);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result),
+          }],
+        };
+      }
+
+      case 'get_eco_model_recommendation': {
+        const complexity = safeArgs.complexity as 1 | 2 | 3 | 4 | 5;
+        const result = getEcoModelRecommendation(complexity);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result),
+          }],
+        };
+      }
+
+      case 'init_ecomode_session': {
+        const tasks = safeArgs.tasks as Array<{
+          id: string;
+          name: string;
+          action: string;
+          files: string[];
+        }>;
+        const planPath = safeArgs.planPath as string | undefined;
+        const state = initEcoModeSession(tasks, { planPath });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state ? { success: true, state } : { success: false, error: 'Session already active' }),
+          }],
+        };
+      }
+
+      case 'track_eco_usage': {
+        const taskId = safeArgs.taskId as string;
+        const tokensUsed = safeArgs.tokensUsed as number;
+        const success = trackEcoUsage(taskId, tokensUsed);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      case 'get_eco_stats': {
+        const stats = getEcoStats();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(stats || { active: false }),
+          }],
+        };
+      }
+
       // === Context Collection (v3.0) ===
       case 'collect_project_context': {
         const ctx = collectProjectContext(safeArgs.planningDir as string | undefined);
@@ -2597,6 +3317,236 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({ hasThinkTank: hasStructure }),
+          }],
+        };
+      }
+
+      // === Ultrapilot Handlers ===
+      case 'init_ultrapilot': {
+        const originalTask = safeArgs.originalTask as string;
+        const subtasks = safeArgs.subtasks as string[];
+        const maxWorkers = safeArgs.maxWorkers as number | undefined;
+        const state = initUltrapilot(originalTask, subtasks, maxWorkers ? { maxWorkers } : undefined);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state ? { success: true, state } : { success: false, error: 'Session already active' }),
+          }],
+        };
+      }
+
+      case 'get_ultrapilot_state': {
+        const state = getUltrapilotState();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state || { active: false }),
+          }],
+        };
+      }
+
+      case 'spawn_ultrapilot_worker': {
+        const task = safeArgs.task as string;
+        const files = safeArgs.files as string[];
+        const worker = spawnWorker(task, files);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(worker ? { success: true, worker } : { success: false, error: 'Cannot spawn worker (max reached or file conflict)' }),
+          }],
+        };
+      }
+
+      case 'complete_ultrapilot_worker': {
+        const workerId = safeArgs.workerId as string;
+        const success = completeWorker(workerId);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      case 'fail_ultrapilot_worker': {
+        const workerId = safeArgs.workerId as string;
+        const error = safeArgs.error as string;
+        const success = failWorker(workerId, error);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      case 'assign_ultrapilot_file': {
+        const workerId = safeArgs.workerId as string;
+        const filePath = safeArgs.filePath as string;
+        const state = getUltrapilotState();
+        if (!state) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ success: false, error: 'No active session' }),
+            }],
+          };
+        }
+        const result = assignFile(state.ownership, workerId, filePath);
+        if (result.success) {
+          updateUltrapilotState({ ownership: state.ownership });
+        }
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result),
+          }],
+        };
+      }
+
+      case 'release_ultrapilot_file': {
+        const filePath = safeArgs.filePath as string;
+        const state = getUltrapilotState();
+        if (!state) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ success: false, error: 'No active session' }),
+            }],
+          };
+        }
+        const owner = getOwnerOf(state.ownership, filePath);
+        if (!owner || owner === 'coordinator') {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ success: false, error: 'File not owned by a worker' }),
+            }],
+          };
+        }
+        const released = releaseFile(state.ownership, owner, filePath);
+        if (released) {
+          updateUltrapilotState({ ownership: state.ownership });
+        }
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success: released }),
+          }],
+        };
+      }
+
+      case 'check_ultrapilot_conflicts': {
+        const state = getUltrapilotState();
+        if (!state) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ hasConflicts: false, reason: 'No active session' }),
+            }],
+          };
+        }
+        const conflicts = hasConflicts(state.ownership);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ hasConflicts: conflicts, conflicts: state.ownership.conflicts }),
+          }],
+        };
+      }
+
+      case 'end_ultrapilot': {
+        const success = endUltrapilot();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      // === Swarm Handlers ===
+      case 'init_swarm_session': {
+        const planPath = safeArgs.planPath as string;
+        const maxWorkers = safeArgs.maxWorkers as number | undefined;
+        const workerTimeoutMs = safeArgs.workerTimeoutMs as number | undefined;
+        const state = initSwarmSession(planPath, { maxWorkers, workerTimeoutMs });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state ? { success: true, state } : { success: false, error: 'Session already active' }),
+          }],
+        };
+      }
+
+      case 'add_swarm_tasks': {
+        const tasks = safeArgs.tasks as Array<{
+          id: string;
+          subject: string;
+          description: string;
+          wave?: number;
+          blockedBy?: string[];
+        }>;
+        const result = addSwarmTasks(tasks);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result ? { success: true, ...result } : { success: false, error: 'No active session' }),
+          }],
+        };
+      }
+
+      case 'claim_swarm_task': {
+        const workerId = safeArgs.workerId as string;
+        const task = claimSwarmTask(workerId);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(task ? { success: true, task } : { success: false, task: null }),
+          }],
+        };
+      }
+
+      case 'complete_swarm_task': {
+        const taskId = safeArgs.taskId as string;
+        const output = safeArgs.output as string | undefined;
+        const filesModified = safeArgs.filesModified as string[] | undefined;
+        const success = completeSwarmTask(taskId, { output, filesModified });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      case 'release_swarm_task': {
+        const taskId = safeArgs.taskId as string;
+        const success = releaseSwarmTask(taskId);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
+          }],
+        };
+      }
+
+      case 'get_swarm_state': {
+        const state = getSwarmState();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(state || { active: false }),
+          }],
+        };
+      }
+
+      case 'end_swarm_session': {
+        const success = endSwarmSession();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success }),
           }],
         };
       }
