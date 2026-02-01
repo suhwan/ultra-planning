@@ -96,7 +96,38 @@ export type StateEventType =
   | 'verification_required'
   // Phase 10 additions - Context monitoring
   | 'context_threshold_reached'
-  | 'context_auto_compaction_triggered';
+  | 'context_auto_compaction_triggered'
+  // Phase 18 additions - Hook system (core events)
+  | 'context_threshold_hook'
+  | 'session_deleted'
+  | 'session_idle'
+  | 'session_error'
+  | 'todo_continuation'
+  | 'message_updated'
+  | 'tool_execute_before'
+  | 'tool_execute_after'
+  // Phase 18 additions - Background notification events
+  | 'background_task_completed'
+  | 'background_tasks_notification'
+  // Phase 18 additions - Session recovery events
+  | 'session_recovery_attempt'
+  | 'session_recovery_failed'
+  | 'session_recovery_success'
+  // Phase 18 additions - Tool hooks events
+  | 'delegate_task_retry'
+  | 'edit_error_recovery'
+  | 'empty_task_response'
+  | 'tool_output_truncated'
+  // Phase 18 additions - Context hooks events
+  | 'keywords_detected'
+  | 'compaction_context_available'
+  | 'agents_context_available'
+  | 'session_compacting'
+  | 'context_compacting'
+  // Phase 18 additions - Session hooks events
+  | 'session_idle_notification'
+  | 'session_error_notification'
+  | 'slash_command_detected';
 
 /** Result of polling events from the event file */
 export interface EventPollResult {

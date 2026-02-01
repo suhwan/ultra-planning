@@ -34,6 +34,14 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 14: Artifact Pattern** - JIT 로딩으로 토큰 효율화
 - [x] **Phase 15: Layered Memory** - Working/Short/Long-term 메모리 분리
 - [x] **Phase 16: Context Compaction** - 자동 압축 고도화
+- [x] **Phase 17: Parallel Execution** - 병렬 실행 모드 완성 (Ultrapilot, Swarm, Pipeline, UltraWork, EcoMode)
+
+### v4.1 - Oh-My-OpenCode Feature Absorption
+- [x] **Phase 18: Hook System** - 35+ 훅 시스템 (todo-continuation, context-monitor, background-notification 등)
+- [ ] **Phase 19: Extended Agent System** - 10+ 에이전트 확장 (Oracle, Librarian, Atlas, Metis, Momus 등)
+- [ ] **Phase 20: Category-based Routing** - 카테고리 기반 모델 라우팅 (visual-engineering, ultrabrain, quick 등)
+- [ ] **Phase 21: Background Manager** - 백그라운드 에이전트 매니저 (동시성 제어, 태스크 큐, 알림)
+- [ ] **Phase 22: Test Coverage** - 테스트 커버리지 90+ 파일 확장
 
 ## Phase Details
 
@@ -454,6 +462,160 @@ Plans:
 - `src/context/monitor.ts` - 현재 모니터 구현
 - `src/context/compactor.ts` - 현재 컴팩터 구현
 
+### Phase 17: Parallel Execution
+**Goal**: 병렬 실행 모드 완성 - 문서화된 기능을 실제 작동하게 구현
+**Depends on**: Phase 16
+**Success Criteria** (what must be TRUE):
+  1. `/ultrapilot` 실행 시 파일 소유권 분할되어 병렬 작업
+  2. `/swarm N:agent` 실행 시 N개 워커가 태스크 풀에서 동적 claim
+  3. `/pipeline preset` 실행 시 스테이지 순차 실행 + 데이터 전달
+  4. `ulw:` 시 Wave 내 태스크 최대 5개 병렬 실행
+  5. `eco:` 시 복잡도별 모델 자동 선택
+**Plans**: 5 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — Ultrapilot MCP 노출 (기존 코드에 MCP 도구 추가)
+- [ ] 17-02-PLAN.md — Swarm 상태 관리 + MCP 도구 (태스크 풀, 원자적 claim)
+- [ ] 17-03-PLAN.md — Pipeline 실행 관리 + MCP 도구 (스테이지 실행, 데이터 전달)
+- [ ] 17-04-PLAN.md — UltraWork 오케스트레이션 (Wave 기반 병렬 실행)
+- [ ] 17-05-PLAN.md — EcoMode 모델 라우팅 (복잡도 분석 + 동시 실행 제한)
+
+**Wave Structure:**
+- Wave 1: 17-01 (Ultrapilot - 기존 코드 노출만, 가장 빠름)
+- Wave 2: 17-02, 17-03 (Swarm, Pipeline - 상태 관리 추가)
+- Wave 3: 17-04, 17-05 (UltraWork, EcoMode - 새 구현)
+
+**참조:**
+- `src/orchestration/ultrapilot/` - 기존 Ultrapilot 구현
+- `src/orchestration/swarm/` - 기존 Swarm 구조
+- `src/orchestration/pipeline/` - 기존 Pipeline 구조
+
+### Phase 18: Hook System
+**Goal**: Oh-My-OpenCode 스타일 35+ 훅 시스템 구현으로 확장성 극대화
+**Depends on**: Phase 17
+**Success Criteria** (what must be TRUE):
+  1. HookRegistry가 모든 훅을 관리하고 이벤트 전파
+  2. todo-continuation-enforcer가 미완료 태스크 시 자동 계속
+  3. context-window-monitor가 토큰 사용량 추적 및 경고
+  4. background-notification이 백그라운드 태스크 완료 시 알림
+  5. 최소 15개 핵심 훅 작동
+**Plans**: 5 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — Hook 인터페이스 및 HookRegistry (types, registry, event-bus)
+- [ ] 18-02-PLAN.md — todo-continuation-enforcer (카운트다운, 자동 주입)
+- [ ] 18-03-PLAN.md — context-window-monitor (토큰 추적, 임계값 알림)
+- [ ] 18-04-PLAN.md — background-notification + session-recovery (알림, 복구)
+- [ ] 18-05-PLAN.md — 추가 핵심 훅 10개 (tool-output-truncator, empty-response-detector 등)
+
+**Wave Structure:**
+- Wave 1: 18-01 (foundation - hook interface)
+- Wave 2: 18-02, 18-03 (parallel - independent hooks)
+- Wave 3: 18-04, 18-05 (parallel - additional hooks)
+
+**참조:**
+- `references/oh-my-opencode/src/hooks/` - 36개 훅 구현
+- `references/oh-my-opencode/src/hooks/todo-continuation-enforcer.ts` - 핵심 패턴
+
+### Phase 19: Extended Agent System
+**Goal**: 4개에서 10+ 에이전트로 확장, 동적 프롬프트 빌딩
+**Depends on**: Phase 18
+**Success Criteria** (what must be TRUE):
+  1. AgentMetadata가 category, cost, triggers 정의
+  2. Oracle (고비용 advisor), Librarian (외부 검색), Explore (코드베이스) 작동
+  3. Dynamic prompt builder가 에이전트 메타데이터로 프롬프트 생성
+  4. 에이전트별 도구 제한 (READ-ONLY 등) 작동
+**Plans**: 4 plans
+
+Plans:
+- [ ] 19-01-PLAN.md — AgentMetadata 타입 및 에이전트 레지스트리 확장
+- [ ] 19-02-PLAN.md — Oracle, Librarian, Explore 에이전트 구현
+- [ ] 19-03-PLAN.md — Atlas, Metis, Momus 에이전트 구현
+- [ ] 19-04-PLAN.md — Dynamic prompt builder (메타데이터 → 프롬프트)
+
+**Wave Structure:**
+- Wave 1: 19-01 (foundation - metadata types)
+- Wave 2: 19-02, 19-03 (parallel - agent implementations)
+- Wave 3: 19-04 (depends on agents for metadata)
+
+**참조:**
+- `references/oh-my-opencode/src/agents/` - 8개 에이전트 구현
+- `references/oh-my-opencode/src/agents/types.ts` - AgentPromptMetadata
+- `references/oh-my-opencode/src/agents/dynamic-agent-prompt-builder.ts`
+
+### Phase 20: Category-based Routing
+**Goal**: 카테고리 기반 모델 라우팅으로 비용/성능 최적화
+**Depends on**: Phase 19
+**Success Criteria** (what must be TRUE):
+  1. 5개 빌트인 카테고리 정의 (visual-engineering, ultrabrain, quick, artistry, writing)
+  2. 카테고리별 model, temperature, thinking budget 자동 적용
+  3. 에이전트가 카테고리 상속으로 설정 간소화
+  4. delegate_task가 카테고리 기반 라우팅 지원
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — CategoryConfig Zod 스키마 및 빌트인 카테고리
+- [ ] 20-02-PLAN.md — 카테고리 상속 로직 (agent → category → defaults)
+- [ ] 20-03-PLAN.md — delegate_task 카테고리 라우팅 통합
+
+**Wave Structure:**
+- Wave 1: 20-01 (foundation - schema)
+- Wave 2: 20-02, 20-03 (parallel - inheritance and routing)
+
+**참조:**
+- `references/oh-my-opencode/src/config/schema.ts` - CategoryConfigSchema
+- `references/oh-my-opencode/src/agents/types.ts` - AgentCategory
+
+### Phase 21: Background Manager
+**Goal**: BackgroundManager로 병렬 태스크 관리 및 알림
+**Depends on**: Phase 18
+**Success Criteria** (what must be TRUE):
+  1. ConcurrencyManager가 모델별 동시 실행 제한
+  2. 태스크 큐 시스템으로 pending/running/completed 상태 관리
+  3. 백그라운드 태스크 완료 시 부모 세션에 알림
+  4. 안정성 감지로 완료 자동 판단 (3초 idle)
+**Plans**: 4 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — ConcurrencyManager (모델별 제한, 큐잉)
+- [ ] 21-02-PLAN.md — BackgroundManager 코어 (launch, track, complete)
+- [ ] 21-03-PLAN.md — 알림 시스템 (배치 알림, 부모 세션 주입)
+- [ ] 21-04-PLAN.md — 안정성 감지 및 stale timeout
+
+**Wave Structure:**
+- Wave 1: 21-01 (foundation - concurrency)
+- Wave 2: 21-02 (depends on concurrency)
+- Wave 3: 21-03, 21-04 (parallel - notifications and detection)
+
+**참조:**
+- `references/oh-my-opencode/src/features/background-agent/manager.ts` - 1380줄
+- `references/oh-my-opencode/src/features/background-agent/concurrency.ts`
+
+### Phase 22: Test Coverage
+**Goal**: 테스트 커버리지 9개 → 90+ 파일로 확장
+**Depends on**: Phase 21
+**Success Criteria** (what must be TRUE):
+  1. 모든 모듈에 최소 1개 테스트 파일
+  2. 핵심 기능 테스트 커버리지 70%+
+  3. E2E 통합 테스트 5개 이상
+  4. CI에서 테스트 자동 실행
+**Plans**: 4 plans
+
+Plans:
+- [ ] 22-01-PLAN.md — 상태 관리 테스트 (StateManager, EventSystem, Checkpoint)
+- [ ] 22-02-PLAN.md — 오케스트레이션 테스트 (Ralplan, Ultrapilot, Swarm, Pipeline)
+- [ ] 22-03-PLAN.md — 훅 시스템 테스트 (HookRegistry, 개별 훅)
+- [ ] 22-04-PLAN.md — E2E 통합 테스트 (전체 워크플로우)
+
+**Wave Structure:**
+- Wave 1: 22-01, 22-02 (parallel - domain tests)
+- Wave 2: 22-03 (depends on hook implementation)
+- Wave 3: 22-04 (E2E - depends on all)
+
+**참조:**
+- `references/oh-my-opencode/src/**/*.test.ts` - 90+ 테스트 파일
+- Vitest 테스트 패턴
+
 ## Progress
 
 **Execution Order:**
@@ -478,8 +640,15 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | 14. Artifact Pattern | 3/3 | Complete | 2026-02-01 |
 | 15. Layered Memory | 3/3 | Complete | 2026-02-01 |
 | 16. Context Compaction | 3/3 | Complete | 2026-02-01 |
+| 17. Parallel Execution | 5/5 | Complete | 2026-02-01 |
+| **v4.1 - OMO Absorption** | | | |
+| 18. Hook System | 5/5 | Complete | 2026-02-01 |
+| 19. Extended Agent System | 0/4 | Planned | - |
+| 20. Category-based Routing | 0/3 | Planned | - |
+| 21. Background Manager | 0/4 | Planned | - |
+| 22. Test Coverage | 0/4 | Planned | - |
 
 ---
 *Roadmap created: 2026-01-26*
-*Version: v4 (Context Architect)*
-*Total: 16 Phases, 55 Plans*
+*Version: v4.1 (Oh-My-OpenCode Feature Absorption)*
+*Total: 22 Phases, 75 Plans*
