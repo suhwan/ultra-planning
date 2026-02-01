@@ -40,7 +40,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 18: Hook System** - 35+ 훅 시스템 (todo-continuation, context-monitor, background-notification 등)
 - [x] **Phase 18.5: Hook Bridge** - Claude Code 네이티브 훅 ↔ Ultra-Planning 훅 연결 브릿지
 - [x] **Phase 19: Extended Agent System** - SKIPPED (기존 에이전트로 충분, 불필요한 복잡성 방지)
-- [ ] **Phase 20: Category-based Routing** - 카테고리 기반 모델 라우팅 (visual-engineering, ultrabrain, quick 등)
+- [x] **Phase 20: Category-based Routing** - 카테고리 기반 모델 라우팅 (visual-engineering, ultrabrain, quick 등)
 - [ ] **Phase 21: Background Manager** - 백그라운드 에이전트 매니저 (동시성 제어, 태스크 큐, 알림)
 - [ ] **Phase 22: Test Coverage** - 테스트 커버리지 90+ 파일 확장
 
@@ -645,7 +645,7 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | 18. Hook System | 5/5 | Complete | 2026-02-01 |
 | 18.5. Hook Bridge | 1/1 | Complete | 2026-02-01 |
 | 19. Extended Agent System | 0/4 | Skipped | - |
-| 20. Category-based Routing | 0/2 | Planned | - |
+| 20. Category-based Routing | 2/2 | Complete | 2026-02-01 |
 | 21. Background Manager | 0/4 | Planned | - |
 | 22. Test Coverage | 0/4 | Planned | - |
 

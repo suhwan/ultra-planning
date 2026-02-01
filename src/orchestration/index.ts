@@ -62,3 +62,6 @@ export {
 
 // Delegation module - task routing based on complexity
 export * from './delegation/index.js';
+
+// Background module - background task management with concurrency control
+export * from './background/index.js';
