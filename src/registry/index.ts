@@ -4,11 +4,15 @@
  * Provides cross-project skill/agent sharing via global and local registries.
  *
  * Directory structure:
- * ~/registry/           # Global registry
- *   agents/             # Agent YAML definitions
- *   skills/             # Skill YAML definitions
- * .ultraplan/           # Local project overrides
- *   skills/             # Project-specific skills (override global)
+ * ~/.claude/registry/   # Global registry (git repo)
+ *   registry.json       # Metadata manifest
+ *   agents/             # Agent definitions
+ *     ultraplan/        # Ultraplan agents
+ *   skills/             # Skill definitions
+ *     ultraplan/        # Ultraplan skills
+ * .claude/              # Local project overrides
+ *   agents/             # Project-specific agents
+ *   skills/             # Project-specific skills
  */
 
 // Types
@@ -60,3 +64,29 @@ export {
   matchesSelectionPattern,
   loadSkillIndex,
 } from './skill-loader.js';
+
+// Metadata loader
+export type {
+  SkillMetadata,
+  AgentMetadata,
+  SkillGroup,
+  AgentGroup,
+  RegistryManifest,
+} from './metadata.js';
+
+export {
+  loadRegistryManifest,
+  clearManifestCache,
+  getSkillGroups,
+  getSkillMetadata,
+  findSkillsByTag,
+  getSkillDependencies,
+  listAllSkills,
+  getAgentGroups,
+  getAgentMetadata,
+  findAgentsByTag,
+  findAgentsByModel,
+  getAgentTools,
+  listAllAgents,
+  getRegistryInfo,
+} from './metadata.js';
