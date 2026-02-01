@@ -176,3 +176,43 @@ After each phase completion:
 1. Update ROADMAP.md checkbox `- [ ]` to `- [x]`
 2. Commit changes with message: `feat(phase-N): complete {phase-name}`
 3. Automatically proceed to next phase
+
+---
+
+## MANDATORY: Task Completion Hook
+
+**모든 TaskUpdate(status: completed) 호출 후 반드시 실행:**
+
+### After Each Task Completion
+
+```
+1. PLAN.md 해당 태스크 체크박스 업데이트: - [ ] → - [x]
+2. STATE.md Current Position 업데이트
+```
+
+### After All Tasks in Plan Complete
+
+```
+1. ROADMAP.md Progress Table 업데이트:
+   - Plans Complete 숫자 증가
+   - 모두 완료 시 Status → "Complete"
+   - Completed 날짜 기록
+```
+
+### After All Plans in Phase Complete
+
+```
+1. ROADMAP.md Phase 체크박스 업데이트: - [ ] → - [x]
+2. Phase 완료 커밋: feat(phase-N): complete {phase-name}
+```
+
+### Sync Command
+
+수동 동기화가 필요한 경우:
+```
+/ultraplan:sync-progress
+```
+
+**FORBIDDEN:**
+- Task 완료 후 상태 파일 업데이트 없이 다음 태스크로 진행
+- Phase 완료 후 ROADMAP.md Progress Table 업데이트 없이 종료
