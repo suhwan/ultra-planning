@@ -1,9 +1,11 @@
-# Ultra Planner v4.0
+# Ultra Planner v4.1
 
 > **"실행하지 않는다. 맥락을 설계한다."**
 > (Don't execute, design context.)
 
 Ultra Planner는 Claude Code를 위한 **Context Architect**입니다.
+
+**v4.1 Highlights:** Hook System (35+ hooks), Category-based Routing, Background Manager, 875+ Tests
 
 ---
 
@@ -201,6 +203,103 @@ TaskUpdate({ taskId: "7", addBlockedBy: ["5"] })
 
 ---
 
+## What's New in v4.1
+
+### Hook System (35+ Hooks)
+
+| Feature | Description |
+|---------|-------------|
+| **Tool Hooks** | pre/post 도구 실행 가로채기 (category-routing, delegate-retry) |
+| **Orchestrator Hooks** | file-guard, single-task, verification 강제 |
+| **Lifecycle Hooks** | session, phase, task 생명주기 이벤트 |
+| **Quality Hooks** | build-error-fixer, test-failure, lint-auto-fix |
+| **Hook Bridge** | 조건부 활성화, 우선순위 기반 실행 |
+
+### Category-based Routing
+
+| Category | Model | Use Case |
+|----------|-------|----------|
+| `quick` | Haiku | 간단한 조회, 기본 작업 |
+| `standard` | Sonnet | 일반 구현, 리팩토링 |
+| `ultrabrain` | Opus | 깊은 추론, 아키텍처 설계 |
+| `visual-engineering` | Opus | UI/UX, 디자인 시스템 |
+| `writing` | Sonnet | 문서, 기술 문서 |
+
+### Background Manager
+
+| Feature | Description |
+|---------|-------------|
+| **Concurrent Control** | 최대 5개 백그라운드 에이전트 동시 실행 |
+| **Task Queue** | 우선순위 기반 대기열 관리 |
+| **Event Notifications** | 완료/실패 알림 시스템 |
+| **State Persistence** | 세션 간 상태 유지 |
+
+### Test Coverage (875+ Tests)
+
+| Category | Files | Tests |
+|----------|-------|-------|
+| Documents | 3 | 81 |
+| Orchestration | 2 | 68 |
+| State | 2 | 58 |
+| Sync | 3 | 93 |
+| Hooks | 4 | 107 |
+| Quality | 4 | 92 |
+| Integration | 2 | 33 |
+| **Total** | **34** | **875+** |
+
+### New Files (v4.1)
+
+```
+src/
+├── hooks/                 # Hook System (Phase 18)
+│   ├── types.ts           # HookContext, HookHandlers, HookResult
+│   ├── registry.ts        # Hook registration and discovery
+│   ├── executor.ts        # Hook chain execution
+│   ├── bridge/            # Hook Bridge (Phase 18.5)
+│   │   ├── types.ts       # BridgeConfig, ConditionalHook
+│   │   ├── conditional.ts # Condition evaluation
+│   │   └── priority.ts    # Priority-based ordering
+│   ├── tool/              # Tool-level hooks
+│   │   ├── category-routing.ts
+│   │   ├── delegate-task-retry.ts
+│   │   └── index.ts
+│   ├── orchestrator/      # Orchestrator hooks
+│   │   ├── file-guard.ts
+│   │   ├── single-task.ts
+│   │   └── verification.ts
+│   ├── lifecycle/         # Lifecycle hooks
+│   │   ├── session.ts
+│   │   ├── phase.ts
+│   │   └── task.ts
+│   └── quality/           # Quality hooks
+│       ├── build-error-fixer.ts
+│       ├── test-failure.ts
+│       └── lint-auto-fix.ts
+│
+├── orchestration/
+│   ├── delegation/        # Category-based Routing (Phase 20)
+│   │   ├── types.ts       # DelegationCategory, ModelTier
+│   │   ├── categories.ts  # Category definitions
+│   │   ├── detector.ts    # Auto-detection from prompts
+│   │   ├── router.ts      # Model/agent routing
+│   │   └── manager.ts     # enhancePromptWithCategory
+│   └── background/        # Background Manager (Phase 21)
+│       ├── types.ts       # BackgroundTask, TaskQueue
+│       ├── manager.ts     # BackgroundAgentManager
+│       ├── queue.ts       # Priority queue implementation
+│       └── notifications.ts # Event notifications
+│
+└── quality/               # Quality Modules
+    ├── lsp/               # LSP Diagnostics
+    │   ├── diagnostics.ts # runDiagnostics
+    │   └── parser.ts      # Diagnostic output parser
+    └── ast/               # AST Analysis
+        ├── analyzer.ts    # Code pattern analyzer
+        └── patterns.ts    # AST pattern definitions
+```
+
+---
+
 ## What's New in v4.0
 
 ### Context Architect Pattern
@@ -213,7 +312,7 @@ TaskUpdate({ taskId: "7", addBlockedBy: ["5"] })
 | **Central Registry** | 프로젝트 간 스킬/에이전트 공유 |
 | **Native Tasks** | Claude Code Tasks로 의존성 추적 |
 
-### New Files (v4.0)
+### Core Files (v4.0)
 
 ```
 src/
@@ -310,6 +409,7 @@ Ultra Planner v4.0은 세 시스템의 장점을 결합합니다:
 
 | Version | Codename | Key Features |
 |---------|----------|--------------|
+| v4.1 | Hook System | 35+ Hooks, Category Routing, Background Manager, 875+ Tests |
 | v4.0 | Context Architect | Layered Memory, Artifact Pattern, Context Compaction, Native Tasks |
 | v3.1.1 | Skill Injection | 스킬 레지스트리, 자동 주입 |
 | v3.1 | Hybrid Integration | GSD + OMC 통합, Model Profiles |
@@ -325,4 +425,4 @@ MIT
 
 ---
 
-*Made with Ultra Planner v4.0 - Context Architect Pattern*
+*Made with Ultra Planner v4.1 - Hook System*

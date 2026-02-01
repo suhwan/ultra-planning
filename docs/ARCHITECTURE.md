@@ -1,7 +1,9 @@
-# Ultra Planning v4.0 - Complete Architecture & Workflow
+# Ultra Planning v4.1 - Complete Architecture & Workflow
 
 > **Context Architect Pattern**: Ultra Planner는 코드를 직접 실행하지 않습니다.
 > 컨텍스트를 설계하고, 상태를 관리하며, 실행은 전문 에이전트에게 위임합니다.
+
+**v4.1 New:** Hook System (35+ hooks), Category-based Routing, Background Manager, 875+ Tests
 
 ---
 
@@ -19,7 +21,10 @@
 10. [OMC 통합](#10-omc-통합)
 11. [스킬 & 페르소나 시스템](#11-스킬--페르소나-시스템)
 12. [ThinkTank 통합 (EdSpark)](#12-thinktank-통합-edspark)
-13. [MCP 도구 레퍼런스](#13-mcp-도구-레퍼런스)
+13. [Hook 시스템 (v4.1)](#13-hook-시스템-v41)
+14. [Category-based Routing (v4.1)](#14-category-based-routing-v41)
+15. [Background Manager (v4.1)](#15-background-manager-v41)
+16. [MCP 도구 레퍼런스](#16-mcp-도구-레퍼런스)
 
 ---
 
@@ -124,16 +129,46 @@ ultra-planning/
 │   │   ├── dependency-map.ts  # Wave 기반 의존성
 │   │   └── task-creation.ts   # TaskCreate 생성
 │   ├── orchestration/         # 오케스트레이션
-│   │   ├── delegation/        # 태스크 라우팅
+│   │   ├── delegation/        # 태스크 라우팅 + Category Routing (v4.1)
+│   │   │   ├── types.ts       # DelegationCategory, ModelTier
+│   │   │   ├── categories.ts  # 9개 카테고리 정의
+│   │   │   ├── detector.ts    # 프롬프트 기반 자동 감지
+│   │   │   ├── router.ts      # 모델/에이전트 라우팅
+│   │   │   └── manager.ts     # enhancePromptWithCategory
+│   │   ├── background/        # Background Manager (v4.1)
+│   │   │   ├── types.ts       # BackgroundTask, TaskQueue
+│   │   │   ├── manager.ts     # BackgroundAgentManager
+│   │   │   ├── queue.ts       # Priority queue
+│   │   │   └── notifications.ts # Event notifications
 │   │   ├── ralplan/           # 계획 합의 루프
 │   │   ├── swarm/             # N-에이전트 협업
 │   │   └── pipeline/          # 순차 에이전트 체인
+│   ├── hooks/                 # Hook System (v4.1)
+│   │   ├── types.ts           # HookContext, HookHandlers
+│   │   ├── registry.ts        # Hook 등록/발견
+│   │   ├── executor.ts        # Hook 체인 실행
+│   │   ├── bridge/            # Hook Bridge (조건부 활성화)
+│   │   ├── tool/              # Tool-level hooks
+│   │   ├── orchestrator/      # Orchestrator hooks
+│   │   ├── lifecycle/         # Lifecycle hooks
+│   │   └── quality/           # Quality hooks
+│   ├── quality/               # Quality Modules (v4.1)
+│   │   ├── lsp/               # LSP Diagnostics
+│   │   │   ├── diagnostics.ts # runDiagnostics
+│   │   │   └── parser.ts      # Output parser
+│   │   └── ast/               # AST Analysis
+│   │       ├── analyzer.ts    # Code pattern analyzer
+│   │       └── patterns.ts    # AST patterns
 │   ├── notepad/               # 학습 기록 시스템
 │   │   ├── manager.ts         # 노트패드 관리
 │   │   └── injector.ts        # 지혜 주입
 │   └── state/                 # 상태 관리
 │       ├── session/           # 세션 관리
-│       └── mode-registry.ts   # 실행 모드 추적
+│       ├── mode-registry.ts   # 실행 모드 추적
+│       └── event-system.ts    # 이벤트 pub/sub
+├── tests/                     # 테스트 (875+ tests)
+│   ├── integration/           # Integration tests
+│   └── ...
 ├── .claude/
 │   ├── commands/              # 로컬 커맨드 (스킬)
 │   ├── agents/                # 로컬 에이전트
@@ -1435,9 +1470,350 @@ ${userRequest}
 
 ---
 
-## 13. MCP 도구 레퍼런스
+## 13. Hook 시스템 (v4.1)
 
-### 13.1 Plan Parsing
+### 13.1 Hook 개요
+
+Hook 시스템은 실행 흐름에 개입하여 동작을 확장하거나 수정할 수 있는 플러그인 아키텍처입니다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      HOOK SYSTEM                                  │
+│                                                                   │
+│  ┌────────────┐   ┌────────────┐   ┌────────────┐              │
+│  │  Tool      │   │Orchestrator│   │ Lifecycle  │              │
+│  │  Hooks     │   │  Hooks     │   │  Hooks     │              │
+│  └─────┬──────┘   └─────┬──────┘   └─────┬──────┘              │
+│        │               │                │                       │
+│        └───────────────┴────────────────┘                       │
+│                        │                                         │
+│              ┌─────────▼─────────┐                              │
+│              │   Hook Registry    │                              │
+│              │   (35+ hooks)      │                              │
+│              └─────────┬─────────┘                              │
+│                        │                                         │
+│              ┌─────────▼─────────┐                              │
+│              │   Hook Executor    │                              │
+│              │   (priority-based) │                              │
+│              └─────────┬─────────┘                              │
+│                        │                                         │
+│              ┌─────────▼─────────┐                              │
+│              │   Hook Bridge      │                              │
+│              │   (conditional)    │                              │
+│              └───────────────────┘                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 13.2 Hook 카테고리
+
+| 카테고리 | 설명 | 예시 |
+|----------|------|------|
+| **Tool Hooks** | 도구 실행 전/후 가로채기 | category-routing, delegate-retry |
+| **Orchestrator Hooks** | 오케스트레이션 규칙 강제 | file-guard, single-task, verification |
+| **Lifecycle Hooks** | 생명주기 이벤트 처리 | session-start, phase-complete, task-done |
+| **Quality Hooks** | 품질 관련 자동화 | build-error-fixer, test-failure, lint-auto-fix |
+
+### 13.3 Hook 타입
+
+```typescript
+// Hook 핸들러 인터페이스
+interface HookHandlers {
+  'tool.execute.before'?: (input: ToolExecuteBeforeInput) => Promise<ToolExecuteBeforeOutput | void>;
+  'tool.execute.after'?: (input: ToolExecuteAfterInput) => Promise<void>;
+  'task.start'?: (input: TaskStartInput) => Promise<void>;
+  'task.complete'?: (input: TaskCompleteInput) => Promise<void>;
+  'session.start'?: (input: SessionStartInput) => Promise<void>;
+  'phase.complete'?: (input: PhaseCompleteInput) => Promise<void>;
+  // ... 35+ hook types
+}
+
+// Hook 결과
+interface HookResult {
+  modified: boolean;
+  inject?: string;          // 프롬프트에 주입할 텍스트
+  modifiedParams?: object;  // 수정된 도구 파라미터
+  block?: boolean;          // 실행 차단
+  blockReason?: string;     // 차단 이유
+}
+```
+
+### 13.4 주요 Hooks
+
+#### Tool Hooks
+
+| Hook | 기능 |
+|------|------|
+| `category-routing` | Task 도구 호출 시 카테고리 기반 모델/에이전트 라우팅 |
+| `delegate-task-retry` | 에이전트 실패 시 자동 재시도 |
+| `tool-logging` | 모든 도구 호출 로깅 |
+
+#### Orchestrator Hooks
+
+| Hook | 기능 |
+|------|------|
+| `file-guard` | 소스 파일 직접 수정 경고 (위임 권장) |
+| `single-task` | 동시에 하나의 태스크만 실행 강제 |
+| `verification` | 태스크 완료 전 검증 강제 |
+
+#### Quality Hooks
+
+| Hook | 기능 |
+|------|------|
+| `build-error-fixer` | 빌드 에러 발생 시 자동 수정 시도 |
+| `test-failure` | 테스트 실패 시 분석 및 수정 제안 |
+| `lint-auto-fix` | 린트 에러 자동 수정 |
+
+### 13.5 Hook Bridge
+
+Hook Bridge는 조건부 활성화와 우선순위 기반 실행을 관리합니다.
+
+```typescript
+// 조건부 Hook 정의
+interface ConditionalHook {
+  id: string;
+  hook: HookHandlers;
+  priority: number;           // 높을수록 먼저 실행
+  conditions: {
+    modes?: string[];         // 특정 모드에서만 활성화
+    phases?: number[];        // 특정 페이즈에서만 활성화
+    tools?: string[];         // 특정 도구에서만 활성화
+    custom?: (ctx: HookContext) => boolean;
+  };
+}
+
+// 사용 예시
+registerConditionalHook({
+  id: 'production-guard',
+  hook: createFileGuardHook(),
+  priority: 100,
+  conditions: {
+    modes: ['ultrawork', 'autopilot'],
+    custom: (ctx) => ctx.env === 'production'
+  }
+});
+```
+
+---
+
+## 14. Category-based Routing (v4.1)
+
+### 14.1 개요
+
+Category-based Routing은 태스크의 특성에 따라 최적의 모델과 에이전트를 자동으로 선택합니다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  CATEGORY-BASED ROUTING                          │
+│                                                                   │
+│  User Prompt                                                      │
+│       │                                                           │
+│       ▼                                                           │
+│  ┌─────────────────┐                                             │
+│  │ Category        │  "debug race condition" → ultrabrain        │
+│  │ Detector        │  "find user model" → quick                  │
+│  │                 │  "create dashboard" → visual-engineering    │
+│  └────────┬────────┘                                             │
+│           │                                                       │
+│           ▼                                                       │
+│  ┌─────────────────┐                                             │
+│  │ Model Router    │  ultrabrain → opus, temp=0.3, thinking=max  │
+│  │                 │  quick → haiku, temp=0.1, thinking=low      │
+│  └────────┬────────┘                                             │
+│           │                                                       │
+│           ▼                                                       │
+│  ┌─────────────────┐                                             │
+│  │ Prompt Enhancer │  카테고리별 가이던스 추가                    │
+│  │                 │  "Focus on: Visual hierarchy..."            │
+│  └─────────────────┘                                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 14.2 카테고리 정의
+
+| 카테고리 | Model | Temp | Thinking | 사용 사례 |
+|----------|-------|------|----------|-----------|
+| `quick` | Haiku | 0.1 | low | 파일 찾기, 간단한 조회 |
+| `standard` | Sonnet | 0.3 | medium | 일반 구현, 기능 추가 |
+| `complex` | Opus | 0.3 | high | 리팩토링, 복잡한 변경 |
+| `ultrabrain` | Opus | 0.3 | max | 깊은 디버깅, 아키텍처 |
+| `visual-engineering` | Opus | 0.7 | high | UI/UX, 디자인 시스템 |
+| `artistry` | Sonnet | 0.9 | medium | 창의적 솔루션 |
+| `writing` | Sonnet | 0.5 | medium | 문서, 기술 문서 |
+| `unspecified-low` | Haiku | 0.3 | low | 기본 낮음 |
+| `unspecified-high` | Opus | 0.5 | high | 기본 높음 |
+
+### 14.3 카테고리 감지
+
+```typescript
+// 키워드 기반 자동 감지
+const CATEGORY_KEYWORDS: Record<DelegationCategory, string[]> = {
+  quick: ['find', 'locate', 'where is', 'show me', 'list'],
+  ultrabrain: ['debug', 'investigate', 'race condition', 'memory leak', 'root cause'],
+  'visual-engineering': ['UI', 'component', 'layout', 'style', 'design', 'responsive'],
+  writing: ['document', 'write', 'explain', 'README', 'comment'],
+  // ...
+};
+
+// 감지 함수
+function detectCategory(prompt: string): DelegationCategory {
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(kw => prompt.toLowerCase().includes(kw))) {
+      return category as DelegationCategory;
+    }
+  }
+  return 'standard';
+}
+```
+
+### 14.4 프롬프트 강화
+
+```typescript
+// 카테고리별 가이던스 추가
+const CATEGORY_GUIDANCE: Record<DelegationCategory, string> = {
+  ultrabrain: `
+Approach systematically:
+- Root cause analysis first
+- Consider edge cases
+- Document your reasoning
+- Verify assumptions with evidence`,
+
+  'visual-engineering': `
+Focus on:
+- Visual hierarchy and layout
+- Accessibility (ARIA, keyboard navigation)
+- Responsive design considerations
+- Design system consistency
+- User experience flow`,
+
+  writing: `
+Focus on:
+- Clarity and conciseness
+- Accurate technical details
+- Consistent terminology
+- Appropriate examples
+- Proper formatting`,
+  // ...
+};
+```
+
+---
+
+## 15. Background Manager (v4.1)
+
+### 15.1 개요
+
+Background Manager는 백그라운드 에이전트의 동시 실행을 관리합니다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    BACKGROUND MANAGER                            │
+│                                                                   │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                      Task Queue                              ││
+│  │                                                              ││
+│  │  Priority 1: [Task A] [Task B]                               ││
+│  │  Priority 2: [Task C]                                        ││
+│  │  Priority 3: [Task D] [Task E] [Task F]                      ││
+│  └──────────────────────────┬──────────────────────────────────┘│
+│                             │                                    │
+│                             ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                  Concurrent Controller                       ││
+│  │                  (max 5 agents)                              ││
+│  │                                                              ││
+│  │  Slot 1: [Agent A] ████░░░░ 45%                             ││
+│  │  Slot 2: [Agent B] ██████░░ 78%                             ││
+│  │  Slot 3: [Agent C] ███████░ 89%                             ││
+│  │  Slot 4: [vacant]                                            ││
+│  │  Slot 5: [vacant]                                            ││
+│  └──────────────────────────┬──────────────────────────────────┘│
+│                             │                                    │
+│                             ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                  Event Notifications                         ││
+│  │                                                              ││
+│  │  on('agent.complete') → update status, notify orchestrator   ││
+│  │  on('agent.failure') → log error, retry or escalate          ││
+│  │  on('queue.empty') → signal all tasks done                   ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 15.2 타입 정의
+
+```typescript
+interface BackgroundTask {
+  id: string;
+  agentType: string;
+  prompt: string;
+  model: ModelTier;
+  priority: number;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  startedAt?: Date;
+  completedAt?: Date;
+  result?: string;
+  error?: string;
+}
+
+interface BackgroundManagerConfig {
+  maxConcurrent: number;      // 기본값: 5
+  defaultTimeout: number;     // 기본값: 5분
+  retryCount: number;         // 기본값: 3
+  priorityLevels: number;     // 기본값: 3
+}
+```
+
+### 15.3 주요 API
+
+```typescript
+// 에이전트 시작
+const taskId = await backgroundManager.spawn({
+  agentType: 'ultraplan-executor',
+  prompt: 'Execute task 03-01-01',
+  model: 'opus',
+  priority: 1
+});
+
+// 상태 확인
+const status = await backgroundManager.getStatus(taskId);
+// { id: '...', status: 'running', progress: 45 }
+
+// 모든 활성 에이전트
+const active = await backgroundManager.listActive();
+// [{ id: '...', agentType: 'executor', ... }, ...]
+
+// 완료 대기
+const result = await backgroundManager.waitFor(taskId);
+
+// 이벤트 구독
+backgroundManager.on('agent.complete', (task) => {
+  console.log(`Agent ${task.id} completed with result: ${task.result}`);
+});
+```
+
+### 15.4 상태 관리
+
+```
+.omc/state/background-manager.json
+{
+  "activeAgents": [
+    { "id": "bg-001", "agentType": "executor", "status": "running", ... },
+    { "id": "bg-002", "agentType": "architect", "status": "running", ... }
+  ],
+  "queue": [
+    { "id": "bg-003", "priority": 1, "status": "queued", ... }
+  ],
+  "completed": [
+    { "id": "bg-000", "status": "completed", "result": "...", ... }
+  ]
+}
+```
+
+---
+
+## 16. MCP 도구 레퍼런스
+
+### 16.1 Plan Parsing
 
 | Tool | 설명 |
 |------|------|
@@ -1448,7 +1824,7 @@ ${userRequest}
 | `build_dependency_map` | Wave 기반 blockedBy 맵 생성 |
 | `calculate_progress` | 진행률 통계 계산 |
 
-### 13.2 Context
+### 16.2 Context
 
 | Tool | 설명 |
 |------|------|
@@ -1461,7 +1837,7 @@ ${userRequest}
 | `get_department_context` | 부서별 컨텍스트 로드 |
 | `has_thinktank` | ThinkTank 구조 존재 여부 |
 
-### 13.3 Skills
+### 16.3 Skills
 
 | Tool | 설명 |
 |------|------|
@@ -1471,7 +1847,7 @@ ${userRequest}
 | `list_skills` | 모든 스킬 목록 |
 | `get_skill` | 특정 스킬 조회 |
 
-### 13.4 Routing & Complexity
+### 16.4 Routing & Complexity
 
 | Tool | 설명 |
 |------|------|
@@ -1484,7 +1860,7 @@ ${userRequest}
 | `estimate_task_complexity` | 복잡도 레벨 추정 |
 | `get_model_for_complexity` | 복잡도별 권장 모델 |
 
-### 13.5 Verdicts
+### 16.5 Verdicts
 
 | Tool | 설명 |
 |------|------|
@@ -1492,7 +1868,7 @@ ${userRequest}
 | `evaluate_critic_checklist` | Critic 체크리스트 평가 |
 | `get_approval_threshold` | 승인 임계값 (80%) |
 
-### 13.6 Sessions
+### 16.6 Sessions
 
 | Tool | 설명 |
 |------|------|
@@ -1502,7 +1878,7 @@ ${userRequest}
 | `claim_task_for_session` | 세션에 태스크 할당 |
 | `complete_session` | 세션 완료 |
 
-### 13.7 Notepad (Wisdom)
+### 16.7 Notepad (Wisdom)
 
 | Tool | 설명 |
 |------|------|
@@ -1515,7 +1891,7 @@ ${userRequest}
 | `init_plan_notepad` | 플랜 노트패드 초기화 |
 | `merge_plan_to_project` | 플랜 지혜를 프로젝트로 병합 |
 
-### 13.8 Deviations & Spikes
+### 16.8 Deviations & Spikes
 
 | Tool | 설명 |
 |------|------|
@@ -1527,7 +1903,7 @@ ${userRequest}
 | `complete_spike` | 스파이크 완료 |
 | `assess_uncertainty` | 불확실성 평가 |
 
-### 13.9 Rollback & Checkpoints
+### 16.9 Rollback & Checkpoints
 
 | Tool | 설명 |
 |------|------|
@@ -1554,8 +1930,45 @@ ${userRequest}
 | **Delegation Category** | 태스크 복잡도 분류 (quick/standard/complex/...) |
 | **ThinkTank** | EdSpark의 12명 에이전트 토론 시스템 |
 | **Notepad** | 플랜별 학습/결정/이슈 기록 시스템 |
+| **Hook** | 실행 흐름에 개입하는 플러그인 (v4.1) |
+| **Hook Bridge** | 조건부 Hook 활성화 레이어 (v4.1) |
+| **Category Routing** | 태스크 특성 기반 모델/에이전트 자동 선택 (v4.1) |
+| **Background Manager** | 백그라운드 에이전트 동시성 제어 (v4.1) |
 
 ---
 
-*문서 버전: 4.0.0*
+## 부록: v4.1 변경사항 요약
+
+### Phase 18: Hook System
+- 35+ hooks 구현 (tool, orchestrator, lifecycle, quality)
+- Hook Registry 및 Executor
+- 조건부 활성화 (Hook Bridge)
+- 우선순위 기반 실행
+
+### Phase 18.5: Hook Bridge
+- ConditionalHook 인터페이스
+- 모드/페이즈/도구 기반 조건
+- Priority-based ordering
+
+### Phase 20: Category-based Routing
+- 9개 Delegation Categories
+- 자동 카테고리 감지
+- 모델/Temperature/Thinking 자동 라우팅
+- 프롬프트 강화 (enhancePromptWithCategory)
+
+### Phase 21: Background Manager
+- 최대 5개 동시 에이전트
+- Priority queue
+- Event notifications
+- State persistence
+
+### Phase 22: Test Coverage
+- 875+ 테스트 (34 파일)
+- Documents, Orchestration, State, Sync, Hooks, Quality
+- Integration tests
+- 28% statements, 78% branches, 72% functions
+
+---
+
+*문서 버전: 4.1.0*
 *최종 업데이트: 2026-02-01*
