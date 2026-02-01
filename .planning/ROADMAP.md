@@ -39,7 +39,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 ### v4.1 - Oh-My-OpenCode Feature Absorption
 - [x] **Phase 18: Hook System** - 35+ 훅 시스템 (todo-continuation, context-monitor, background-notification 등)
 - [x] **Phase 18.5: Hook Bridge** - Claude Code 네이티브 훅 ↔ Ultra-Planning 훅 연결 브릿지
-- [ ] **Phase 19: Extended Agent System** - 10+ 에이전트 확장 (Oracle, Librarian, Atlas, Metis, Momus 등)
+- [x] **Phase 19: Extended Agent System** - SKIPPED (기존 에이전트로 충분, 불필요한 복잡성 방지)
 - [ ] **Phase 20: Category-based Routing** - 카테고리 기반 모델 라우팅 (visual-engineering, ultrabrain, quick 등)
 - [ ] **Phase 21: Background Manager** - 백그라운드 에이전트 매니저 (동시성 제어, 태스크 큐, 알림)
 - [ ] **Phase 22: Test Coverage** - 테스트 커버리지 90+ 파일 확장
@@ -548,24 +548,23 @@ Plans:
 **Goal**: 카테고리 기반 모델 라우팅으로 비용/성능 최적화
 **Depends on**: Phase 19
 **Success Criteria** (what must be TRUE):
-  1. 5개 빌트인 카테고리 정의 (visual-engineering, ultrabrain, quick, artistry, writing)
+  1. 9개 카테고리 정의 (7 기존 + unspecified-low + unspecified-high)
   2. 카테고리별 model, temperature, thinking budget 자동 적용
-  3. 에이전트가 카테고리 상속으로 설정 간소화
+  3. Zod 스키마로 카테고리 설정 런타임 검증
   4. delegate_task가 카테고리 기반 라우팅 지원
-**Plans**: 3 plans
+**Plans**: 2 plans
 
 Plans:
-- [ ] 20-01-PLAN.md — CategoryConfig Zod 스키마 및 빌트인 카테고리
-- [ ] 20-02-PLAN.md — 카테고리 상속 로직 (agent → category → defaults)
-- [ ] 20-03-PLAN.md — delegate_task 카테고리 라우팅 통합
+- [ ] 20-01-PLAN.md — CategoryConfig Zod 스키마, 폴백 카테고리, thinking budget tokens
+- [ ] 20-02-PLAN.md — 프롬프트 향상 및 Task tool 카테고리 라우팅 훅
 
 **Wave Structure:**
-- Wave 1: 20-01 (foundation - schema)
-- Wave 2: 20-02, 20-03 (parallel - inheritance and routing)
+- Wave 1: 20-01 (foundation - schema, categories, tokens)
+- Wave 2: 20-02 (depends on 20-01 for types)
 
 **참조:**
 - `references/oh-my-opencode/src/config/schema.ts` - CategoryConfigSchema
-- `references/oh-my-opencode/src/agents/types.ts` - AgentCategory
+- `src/orchestration/delegation/` - 기존 delegation 모듈 (이미 7개 카테고리 구현됨)
 
 ### Phase 21: Background Manager
 **Goal**: BackgroundManager로 병렬 태스크 관리 및 알림
@@ -645,12 +644,12 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | **v4.1 - OMO Absorption** | | | |
 | 18. Hook System | 5/5 | Complete | 2026-02-01 |
 | 18.5. Hook Bridge | 1/1 | Complete | 2026-02-01 |
-| 19. Extended Agent System | 0/4 | Planned | - |
-| 20. Category-based Routing | 0/3 | Planned | - |
+| 19. Extended Agent System | 0/4 | Skipped | - |
+| 20. Category-based Routing | 0/2 | Planned | - |
 | 21. Background Manager | 0/4 | Planned | - |
 | 22. Test Coverage | 0/4 | Planned | - |
 
 ---
 *Roadmap created: 2026-01-26*
 *Version: v4.1 (Oh-My-OpenCode Feature Absorption)*
-*Total: 22 Phases, 75 Plans*
+*Total: 22 Phases, 74 Plans*
