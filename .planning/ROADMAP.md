@@ -476,8 +476,8 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | **v4.0** | | | |
 | 13. Central Registry | 4/4 | Complete | 2026-02-01 |
 | 14. Artifact Pattern | 3/3 | Complete | 2026-02-01 |
-| 15. Layered Memory | 0/3 | Pending | - |
-| 16. Context Compaction | 0/3 | Planned | - |
+| 15. Layered Memory | 3/3 | Complete | 2026-02-01 |
+| 16. Context Compaction | 3/3 | Complete | 2026-02-01 |
 
 ---
 *Roadmap created: 2026-01-26*
