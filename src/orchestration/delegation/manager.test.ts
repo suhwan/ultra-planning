@@ -15,6 +15,8 @@ import {
   needsHighTierModel,
   generateExecutorLoopPrompt,
   generateHeartbeatProtocol,
+  getCategoryThinkingBudgetTokens,
+  resolveCategory,
 } from './manager.js';
 import { DELEGATION_CATEGORIES, CATEGORY_AGENTS } from './types.js';
 
@@ -171,7 +173,7 @@ describe('Delegation Manager', () => {
     it('should list all categories', () => {
       const categories = listCategories();
 
-      expect(categories.length).toBe(7);
+      expect(categories.length).toBe(9);
       expect(categories.map(c => c.category)).toContain('quick');
       expect(categories.map(c => c.category)).toContain('standard');
       expect(categories.map(c => c.category)).toContain('complex');
@@ -179,6 +181,8 @@ describe('Delegation Manager', () => {
       expect(categories.map(c => c.category)).toContain('visual-engineering');
       expect(categories.map(c => c.category)).toContain('artistry');
       expect(categories.map(c => c.category)).toContain('writing');
+      expect(categories.map(c => c.category)).toContain('unspecified-low');
+      expect(categories.map(c => c.category)).toContain('unspecified-high');
     });
   });
 
@@ -233,6 +237,94 @@ describe('Delegation Manager', () => {
       expect(protocol).toContain('Heartbeat Protocol');
       expect(protocol).toContain('30 seconds');
       expect(protocol).toContain('TaskUpdate');
+    });
+  });
+
+  describe('getCategoryThinkingBudgetTokens', () => {
+    it('should return token count for each category', () => {
+      expect(getCategoryThinkingBudgetTokens('quick')).toBe(1000);        // low
+      expect(getCategoryThinkingBudgetTokens('standard')).toBe(5000);     // medium
+      expect(getCategoryThinkingBudgetTokens('ultrabrain')).toBe(32000);  // max
+      expect(getCategoryThinkingBudgetTokens('unspecified-low')).toBe(1000);
+      expect(getCategoryThinkingBudgetTokens('unspecified-high')).toBe(10000);
+    });
+
+    it('should return correct tokens for all categories', () => {
+      // quick: low (1000)
+      expect(getCategoryThinkingBudgetTokens('quick')).toBe(1000);
+      // standard: medium (5000)
+      expect(getCategoryThinkingBudgetTokens('standard')).toBe(5000);
+      // complex: high (10000)
+      expect(getCategoryThinkingBudgetTokens('complex')).toBe(10000);
+      // ultrabrain: max (32000)
+      expect(getCategoryThinkingBudgetTokens('ultrabrain')).toBe(32000);
+      // visual-engineering: high (10000)
+      expect(getCategoryThinkingBudgetTokens('visual-engineering')).toBe(10000);
+      // artistry: medium (5000)
+      expect(getCategoryThinkingBudgetTokens('artistry')).toBe(5000);
+      // writing: medium (5000)
+      expect(getCategoryThinkingBudgetTokens('writing')).toBe(5000);
+    });
+  });
+
+  describe('resolveCategory', () => {
+    it('should prefer explicit category', () => {
+      expect(resolveCategory({
+        taskDescription: 'find something',
+        explicitCategory: 'ultrabrain'
+      })).toBe('ultrabrain');
+    });
+
+    it('should map explicit tier to unspecified category', () => {
+      expect(resolveCategory({
+        taskDescription: 'do task',
+        explicitTier: 'haiku'
+      })).toBe('unspecified-low');
+
+      expect(resolveCategory({
+        taskDescription: 'do task',
+        explicitTier: 'opus'
+      })).toBe('unspecified-high');
+
+      expect(resolveCategory({
+        taskDescription: 'do task',
+        explicitTier: 'sonnet'
+      })).toBe('unspecified-high');
+    });
+
+    it('should auto-detect when no explicit options', () => {
+      expect(resolveCategory({
+        taskDescription: 'debug the race condition'
+      })).toBe('ultrabrain');
+    });
+
+    it('should prioritize explicit category over explicit tier', () => {
+      expect(resolveCategory({
+        taskDescription: 'do task',
+        explicitCategory: 'writing',
+        explicitTier: 'haiku'
+      })).toBe('writing');
+    });
+  });
+
+  describe('unspecified categories', () => {
+    it('should have unspecified-low config', () => {
+      const config = getCategoryConfig('unspecified-low');
+      expect(config.model.tier).toBe('haiku');
+      expect(config.model.thinkingBudget).toBe('low');
+      expect(config.model.temperature).toBe(0.3);
+    });
+
+    it('should have unspecified-high config', () => {
+      const config = getCategoryConfig('unspecified-high');
+      expect(config.model.tier).toBe('opus');
+      expect(config.model.thinkingBudget).toBe('high');
+      expect(config.model.temperature).toBe(0.3);
+    });
+
+    it('should have correct agent mappings', () => {
+      expect(getAgentForCategory('unspecified-low').agent).toBe('executor-low');
+      expect(getAgentForCategory('unspecified-high').agent).toBe('executor-high');
     });
   });
 });

@@ -28,6 +28,8 @@ export interface ModelConfig {
 /**
  * Delegation categories based on task characteristics
  * Inspired by oh-my-claudecode delegation patterns
+ *
+ * 7 semantic categories + 2 fallback categories for explicit tier requests
  */
 export type DelegationCategory =
   | 'quick'               // Simple lookups, basic operations
@@ -36,7 +38,25 @@ export type DelegationCategory =
   | 'ultrabrain'          // Complex reasoning, architecture, deep debugging
   | 'visual-engineering'  // UI/UX, frontend, design systems
   | 'artistry'            // Creative solutions, brainstorming
-  | 'writing';            // Documentation, technical writing
+  | 'writing'             // Documentation, technical writing
+  | 'unspecified-low'     // Fallback for explicit low-tier requests
+  | 'unspecified-high';   // Fallback for explicit high-tier requests
+
+// ============================================================================
+// Thinking Budget Token Mapping
+// ============================================================================
+
+/**
+ * Maps thinking budget levels to actual token counts for Claude API.
+ */
+export const THINKING_BUDGET_TOKENS = {
+  low: 1000,
+  medium: 5000,
+  high: 10000,
+  max: 32000,
+} as const;
+
+export type ThinkingBudgetLevel = keyof typeof THINKING_BUDGET_TOKENS;
 
 /** Category configuration */
 export interface CategoryConfig {
@@ -184,6 +204,40 @@ export const DELEGATION_CATEGORIES: Record<DelegationCategory, CategoryConfig> =
       'Technical writing',
     ],
   },
+
+  'unspecified-low': {
+    category: 'unspecified-low',
+    displayName: 'Unspecified (Low)',
+    description: 'Fallback for explicit low-tier requests without semantic category',
+    model: {
+      tier: 'haiku',
+      temperature: 0.3,
+      thinkingBudget: 'low',
+    },
+    keywords: [],
+    useCases: [
+      'Explicit haiku tier request',
+      'Quick tasks without semantic match',
+      'Low-priority background work',
+    ],
+  },
+
+  'unspecified-high': {
+    category: 'unspecified-high',
+    displayName: 'Unspecified (High)',
+    description: 'Fallback for explicit high-tier requests without semantic category',
+    model: {
+      tier: 'opus',
+      temperature: 0.3,
+      thinkingBudget: 'high',
+    },
+    keywords: [],
+    useCases: [
+      'Explicit opus tier request',
+      'Critical tasks without semantic match',
+      'High-priority work requiring deep reasoning',
+    ],
+  },
 };
 
 // ============================================================================
@@ -249,5 +303,15 @@ export const CATEGORY_AGENTS: Record<DelegationCategory, AgentRecommendation> = 
     agent: 'writer',
     model: 'sonnet',
     reason: 'Documentation requires accuracy and completeness',
+  },
+  'unspecified-low': {
+    agent: 'executor-low',
+    model: 'haiku',
+    reason: 'Fallback for explicit low-tier requests',
+  },
+  'unspecified-high': {
+    agent: 'executor-high',
+    model: 'opus',
+    reason: 'Fallback for explicit high-tier requests',
   },
 };

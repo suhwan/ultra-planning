@@ -12,6 +12,7 @@ import {
   DELEGATION_CATEGORIES,
   COMPLEXITY_TO_CATEGORY,
   CATEGORY_AGENTS,
+  THINKING_BUDGET_TOKENS,
 } from './types.js';
 
 import { estimateComplexity, ComplexityLevel } from '../../complexity/index.js';
@@ -35,6 +36,8 @@ export function detectCategory(taskDescription: string): DelegationCategory {
     'visual-engineering': 0,
     artistry: 0,
     writing: 0,
+    'unspecified-low': 0,
+    'unspecified-high': 0,
   };
 
   for (const [category, config] of Object.entries(DELEGATION_CATEGORIES)) {
@@ -71,6 +74,40 @@ export function categoryFromComplexity(level: ComplexityLevel): DelegationCatego
  */
 export function getCategoryConfig(category: DelegationCategory): CategoryConfig {
   return DELEGATION_CATEGORIES[category];
+}
+
+/**
+ * Get thinking budget token count for a category.
+ * Maps thinkingBudget string to actual token count for Claude API.
+ */
+export function getCategoryThinkingBudgetTokens(category: DelegationCategory): number {
+  const config = DELEGATION_CATEGORIES[category];
+  return THINKING_BUDGET_TOKENS[config.model.thinkingBudget];
+}
+
+/**
+ * Get full category resolution with priority:
+ * 1. Explicit category (if provided)
+ * 2. Explicit tier -> unspecified-{tier}
+ * 3. Auto-detect from description
+ */
+export function resolveCategory(options: {
+  taskDescription: string;
+  explicitCategory?: DelegationCategory;
+  explicitTier?: ModelTier;
+}): DelegationCategory {
+  // 1. Explicit category wins
+  if (options.explicitCategory) {
+    return options.explicitCategory;
+  }
+
+  // 2. Explicit tier maps to unspecified-{tier}
+  if (options.explicitTier) {
+    return options.explicitTier === 'haiku' ? 'unspecified-low' : 'unspecified-high';
+  }
+
+  // 3. Auto-detect
+  return detectCategory(options.taskDescription);
 }
 
 // ============================================================================
