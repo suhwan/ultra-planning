@@ -8,6 +8,7 @@
 import {
   WARNING_THRESHOLD,
   CRITICAL_THRESHOLD,
+  AUTO_COMPACTION_THRESHOLD,
   type ContextConfig,
 } from './types.js';
 
@@ -16,14 +17,14 @@ import {
 // ============================================================================
 
 /** Threshold level classification */
-export type ThresholdLevel = 'normal' | 'warning' | 'critical';
+export type ThresholdLevel = 'normal' | 'warning' | 'auto_compact' | 'critical';
 
 /** Action to take based on threshold level */
 export interface ThresholdAction {
   /** Current threshold level */
   level: ThresholdLevel;
   /** Recommended action */
-  action: 'none' | 'prepare_handoff' | 'force_return';
+  action: 'none' | 'prepare_handoff' | 'auto_compact' | 'force_return';
   /** Human-readable explanation */
   message: string;
 }
@@ -44,10 +45,13 @@ export function detectThreshold(
   config?: ContextConfig,
 ): ThresholdLevel {
   const criticalThreshold = config?.criticalThreshold ?? CRITICAL_THRESHOLD;
+  const autoCompactionThreshold = config?.autoCompactionThreshold ?? AUTO_COMPACTION_THRESHOLD;
   const warningThreshold = config?.warningThreshold ?? WARNING_THRESHOLD;
 
   if (usageRatio >= criticalThreshold) {
     return 'critical';
+  } else if (usageRatio >= autoCompactionThreshold) {
+    return 'auto_compact';
   } else if (usageRatio >= warningThreshold) {
     return 'warning';
   } else {
@@ -68,6 +72,12 @@ export function getThresholdAction(level: ThresholdLevel): ThresholdAction {
         level: 'critical',
         action: 'force_return',
         message: 'Context critical (85%+) - initiating checkpoint return',
+      };
+    case 'auto_compact':
+      return {
+        level: 'auto_compact',
+        action: 'auto_compact',
+        message: 'Context at 80% - triggering auto-compaction',
       };
     case 'warning':
       return {

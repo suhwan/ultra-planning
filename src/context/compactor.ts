@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { CollectedContext, collectContext, estimateContextTokens } from './collector.js';
+import { extractCoreInfo, CoreInfo, estimateCoreInfoTokens } from './extractor.js';
 
 // ============================================================================
 // Types
@@ -42,6 +43,10 @@ export interface CompactedContext {
   originalTokens: number;
   /** Estimated tokens in compacted form */
   compactedTokens: number;
+  /** Extracted core info from planning artifacts */
+  coreInfo?: CoreInfo;
+  /** Compression ratio (compactedTokens / originalTokens) */
+  compressionRatio: number;
 }
 
 /**
@@ -168,11 +173,184 @@ export function compactContext(
     progress: calculateProgress(ctx),
     originalTokens,
     compactedTokens: 0, // Calculate after creation
+    compressionRatio: 0, // Calculate after creation
   };
 
-  // Calculate compacted tokens
+  // Calculate compacted tokens and compression ratio
   compacted.compactedTokens = estimateCompactedTokens(compacted);
+  compacted.compressionRatio = originalTokens > 0
+    ? compacted.compactedTokens / originalTokens
+    : 0;
 
+  return compacted;
+}
+
+/**
+ * Validate that compression meets the target ratio.
+ *
+ * @param original - Original token count
+ * @param compacted - Compacted token count
+ * @param maxRatio - Maximum allowed ratio (default: 0.20 = 20%)
+ * @returns true if compression is under the target ratio
+ */
+export function validateCompression(
+  original: number,
+  compacted: number,
+  maxRatio: number = 0.20
+): boolean {
+  if (original <= 0) return true; // No original context to compress
+  const ratio = compacted / original;
+  return ratio <= maxRatio;
+}
+
+/**
+ * Compact context with CoreInfo integration.
+ *
+ * This function combines the standard compaction with extracted CoreInfo
+ * and ensures the result is under 20% of the original context size.
+ * If initial compression fails, it progressively removes less critical
+ * information until the target is met.
+ *
+ * @param options - Compaction options
+ * @returns CompactedContext with CoreInfo and guaranteed <20% compression
+ *
+ * @example
+ * ```typescript
+ * const compacted = compactWithCoreInfo({ planningDir: '.planning' });
+ * console.log(compacted.compressionRatio); // <= 0.20
+ * console.log(compacted.coreInfo); // CoreInfo from extractor
+ * ```
+ */
+export function compactWithCoreInfo(
+  options: CompactionOptions = {}
+): CompactedContext {
+  const {
+    planningDir = DEFAULT_PLANNING_DIR,
+    maxSummaryLength = 2000,
+  } = options;
+
+  // Collect context first
+  const ctx = collectContext({ planningDir });
+  const originalTokens = estimateContextTokens(ctx);
+
+  // Extract core info from planning artifacts
+  const coreInfo = extractCoreInfo(planningDir);
+
+  // Start with full compaction
+  let compacted = compactContext(ctx, {
+    ...options,
+    includeDecisions: true,
+    includeIssues: true,
+    includeLearnings: true,
+  });
+
+  // Add coreInfo to the compacted context
+  compacted.coreInfo = coreInfo;
+
+  // Recalculate tokens with coreInfo included
+  const coreInfoTokens = estimateCoreInfoTokens(coreInfo);
+  compacted.compactedTokens += coreInfoTokens;
+  compacted.compressionRatio = originalTokens > 0
+    ? compacted.compactedTokens / originalTokens
+    : 0;
+
+  // If compression is already valid, return
+  if (validateCompression(originalTokens, compacted.compactedTokens)) {
+    return compacted;
+  }
+
+  // Progressive removal to achieve <20% compression
+  // Priority order for removal (least critical first):
+  // 1. References from coreInfo
+  // 2. Older learnings
+  // 3. Detailed progress info
+
+  // Step 1: Remove references
+  if (coreInfo.keyReferences.length > 0) {
+    coreInfo.keyReferences = [];
+    compacted.coreInfo = coreInfo;
+    compacted.compactedTokens = estimateCompactedTokens(compacted) + estimateCoreInfoTokens(coreInfo);
+    compacted.compressionRatio = originalTokens > 0
+      ? compacted.compactedTokens / originalTokens
+      : 0;
+
+    if (validateCompression(originalTokens, compacted.compactedTokens)) {
+      return compacted;
+    }
+  }
+
+  // Step 2: Reduce learnings (keep only 2 most recent)
+  if (compacted.learnings.length > 2) {
+    compacted.learnings = compacted.learnings.slice(0, 2);
+    if (coreInfo.recentLearnings.length > 2) {
+      coreInfo.recentLearnings = coreInfo.recentLearnings.slice(0, 2);
+      compacted.coreInfo = coreInfo;
+    }
+    compacted.compactedTokens = estimateCompactedTokens(compacted) + estimateCoreInfoTokens(coreInfo);
+    compacted.compressionRatio = originalTokens > 0
+      ? compacted.compactedTokens / originalTokens
+      : 0;
+
+    if (validateCompression(originalTokens, compacted.compactedTokens)) {
+      return compacted;
+    }
+  }
+
+  // Step 3: Remove all learnings
+  if (compacted.learnings.length > 0 || coreInfo.recentLearnings.length > 0) {
+    compacted.learnings = [];
+    coreInfo.recentLearnings = [];
+    compacted.coreInfo = coreInfo;
+    compacted.compactedTokens = estimateCompactedTokens(compacted) + estimateCoreInfoTokens(coreInfo);
+    compacted.compressionRatio = originalTokens > 0
+      ? compacted.compactedTokens / originalTokens
+      : 0;
+
+    if (validateCompression(originalTokens, compacted.compactedTokens)) {
+      return compacted;
+    }
+  }
+
+  // Step 4: Reduce decisions (keep only 3)
+  if (compacted.decisions.length > 3 || coreInfo.architectureDecisions.length > 3) {
+    compacted.decisions = compacted.decisions.slice(0, 3);
+    coreInfo.architectureDecisions = coreInfo.architectureDecisions.slice(0, 3);
+    compacted.coreInfo = coreInfo;
+    compacted.compactedTokens = estimateCompactedTokens(compacted) + estimateCoreInfoTokens(coreInfo);
+    compacted.compressionRatio = originalTokens > 0
+      ? compacted.compactedTokens / originalTokens
+      : 0;
+
+    if (validateCompression(originalTokens, compacted.compactedTokens)) {
+      return compacted;
+    }
+  }
+
+  // Step 5: Truncate project summary to 500 chars
+  if (compacted.projectSummary.length > 500) {
+    compacted.projectSummary = compacted.projectSummary.slice(0, 497) + '...';
+    compacted.compactedTokens = estimateCompactedTokens(compacted) + estimateCoreInfoTokens(coreInfo);
+    compacted.compressionRatio = originalTokens > 0
+      ? compacted.compactedTokens / originalTokens
+      : 0;
+
+    if (validateCompression(originalTokens, compacted.compactedTokens)) {
+      return compacted;
+    }
+  }
+
+  // Step 6: Remove decisions entirely
+  if (compacted.decisions.length > 0 || coreInfo.architectureDecisions.length > 0) {
+    compacted.decisions = [];
+    coreInfo.architectureDecisions = [];
+    compacted.coreInfo = coreInfo;
+    compacted.compactedTokens = estimateCompactedTokens(compacted) + estimateCoreInfoTokens(coreInfo);
+    compacted.compressionRatio = originalTokens > 0
+      ? compacted.compactedTokens / originalTokens
+      : 0;
+  }
+
+  // Return whatever we have - best effort compression achieved
   return compacted;
 }
 

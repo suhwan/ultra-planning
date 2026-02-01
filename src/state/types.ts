@@ -95,7 +95,8 @@ export type StateEventType =
   | 'orchestrator_warning'
   | 'verification_required'
   // Phase 10 additions - Context monitoring
-  | 'context_threshold_reached';
+  | 'context_threshold_reached'
+  | 'context_auto_compaction_triggered';
 
 /** Result of polling events from the event file */
 export interface EventPollResult {

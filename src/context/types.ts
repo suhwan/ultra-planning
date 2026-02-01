@@ -22,6 +22,9 @@ export const WARNING_THRESHOLD = 0.70;
 /** Critical threshold - force return at 85% */
 export const CRITICAL_THRESHOLD = 0.85;
 
+/** Auto-compaction threshold - trigger compaction at 80% */
+export const AUTO_COMPACTION_THRESHOLD = 0.80;
+
 // ============================================================================
 // Configuration Types
 // ============================================================================
@@ -34,6 +37,8 @@ export interface ContextConfig {
   warningThreshold?: number;
   /** Critical threshold ratio (default: 0.85) */
   criticalThreshold?: number;
+  /** Auto-compaction threshold ratio (default: 0.80) */
+  autoCompactionThreshold?: number;
 }
 
 // ============================================================================
@@ -41,10 +46,10 @@ export interface ContextConfig {
 // ============================================================================
 
 /** Threshold status categories */
-export type ThresholdStatus = 'normal' | 'warning' | 'critical';
+export type ThresholdStatus = 'normal' | 'warning' | 'auto_compact' | 'critical';
 
 /** Action to take based on threshold status */
-export type ContextAction = 'none' | 'prepare_handoff' | 'force_return';
+export type ContextAction = 'none' | 'prepare_handoff' | 'auto_compact' | 'force_return';
 
 /** Context state for file persistence */
 export interface ContextState {

@@ -58,6 +58,78 @@
 
 ---
 
+## MANDATORY: Native Tasks with Dependencies
+
+**ALWAYS use Claude Code's Native Tasks (TaskCreate/TaskUpdate) for execution tracking.**
+
+### Task Registration Protocol
+
+When executing a PLAN.md, register ALL tasks BEFORE execution:
+
+```
+1. Parse PLAN.md for all <task> elements
+2. For each task, call TaskCreate with:
+   - subject: "{plan}-{task_num}: {task_name}"
+   - description: Task action summary
+   - activeForm: Present continuous form
+
+3. Set up blockedBy relationships based on waves:
+   - Wave 1 tasks: No blockedBy
+   - Wave 2 tasks: blockedBy = [all Wave 1 task IDs]
+   - Wave 3 tasks: blockedBy = [all Wave 2 task IDs]
+
+4. Execute tasks respecting blockedBy:
+   - Only start tasks where blockedBy is empty or all completed
+   - Update status to in_progress when starting
+   - Update status to completed when done
+```
+
+### Example: Registering 3-Task Plan
+
+```typescript
+// Wave 1
+TaskCreate({ subject: "16-01-01: Add types", ... })  // → #6
+
+// Wave 2 (depends on Wave 1)
+TaskCreate({ subject: "16-01-02: Implement monitor", ... })  // → #5
+TaskUpdate({ taskId: "5", addBlockedBy: ["6"] })
+
+// Wave 3 (depends on Wave 2)
+TaskCreate({ subject: "16-01-03: Add tests", ... })  // → #7
+TaskUpdate({ taskId: "7", addBlockedBy: ["5"] })
+```
+
+### Task Status Updates
+
+| When | Action |
+|------|--------|
+| Task created | status: pending (default) |
+| About to execute | TaskUpdate status: in_progress |
+| Executor returns success | TaskUpdate status: completed |
+| Executor returns failure | Keep in_progress, retry |
+
+### Parallel Execution with blockedBy
+
+```
+TaskList shows:
+#5 [pending] 16-01-02: Implement monitor [blocked by #6]
+#6 [in_progress] 16-01-01: Add types
+#7 [pending] 16-01-03: Add tests [blocked by #5]
+
+When #6 completes:
+#5 [pending] 16-01-02: Implement monitor  ← NOW UNBLOCKED
+#6 [completed] 16-01-01: Add types
+#7 [pending] 16-01-03: Add tests [blocked by #5]
+```
+
+### FORBIDDEN (Tasks)
+
+1. **NEVER** execute tasks without registering in Native Tasks first
+2. **NEVER** skip blockedBy setup for multi-wave plans
+3. **NEVER** mark task completed without verification passing
+
+---
+
 ## Unattended Execution Mode
 
 When `/thorough all` or `/thorough from {N}` is running:

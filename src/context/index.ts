@@ -32,6 +32,20 @@ export * from './injector.js';
 // Context compaction for fresh-start
 export * from './compactor.js';
 
+// Core info extraction from planning artifacts
+export { extractCoreInfo, CoreInfo, formatCoreInfo, estimateCoreInfoTokens } from './extractor.js';
+
+// Re-export compactWithCoreInfo explicitly for clarity
+export { compactWithCoreInfo, validateCompression } from './compactor.js';
+
+// Fresh-start context preparation and injection
+export { prepareFreshStart, injectCompactedContext } from './fresh-start.js';
+export type { FreshStartContext, FreshStartOptions } from './fresh-start.js';
+
+// Auto-compaction manager
+export { AutoCompactionManager, createAutoCompactionManager } from './auto-compaction.js';
+export type { AutoCompactionOptions, CompactionResult } from './auto-compaction.js';
+
 // ============================================================================
 // Core Types and Constants
 // ============================================================================
@@ -47,6 +61,9 @@ export * from './thresholds.js';
 
 // Context monitor with state persistence
 export * from './monitor.js';
+
+// Advanced context monitor with auto-compaction detection
+export * from './advanced-monitor.js';
 
 // Checkpoint and handoff structures
 export * from './checkpoint-return.js';
