@@ -34,6 +34,12 @@ import {
   generateProjectSummary,
 } from './notepad/index.js';
 import { estimateTokens } from './context/estimator.js';
+import {
+  hasThinkTankStructure,
+  loadThinkTankContext,
+  generatePlannerContext,
+  generateDepartmentContext,
+} from './context/thinktank-loader.js';
 
 // Import complexity functions
 import {
@@ -1142,6 +1148,42 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: 'object' as const,
           properties: {
             snapshotId: { type: 'string', description: 'Snapshot ID or "latest"' },
+          },
+          required: [],
+        },
+      },
+
+      // === ThinkTank Context (EdSpark Integration) ===
+      {
+        name: 'get_thinktank_context',
+        description: 'Get ThinkTank context for GSD Planner injection. Returns departments, agents, and execution flow summary if .edspark/thinktank/ exists.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            projectPath: { type: 'string', description: 'Project path (default: current directory)' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'get_department_context',
+        description: 'Get department-specific context with agent specializations for a specific department.',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            department: { type: 'string', description: 'Department name (e.g., design, strategy, development)' },
+            projectPath: { type: 'string', description: 'Project path (default: current directory)' },
+          },
+          required: ['department'],
+        },
+      },
+      {
+        name: 'has_thinktank',
+        description: 'Check if project has ThinkTank structure (.edspark/thinktank/).',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            projectPath: { type: 'string', description: 'Project path (default: current directory)' },
           },
           required: [],
         },
@@ -2496,6 +2538,65 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({ event: safeArgs.event, skillIds }),
+          }],
+        };
+      }
+
+      // === ThinkTank Context (EdSpark Integration) ===
+      case 'get_thinktank_context': {
+        const projectPath = safeArgs.projectPath as string | undefined;
+        const context = generatePlannerContext(projectPath);
+        if (!context) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: 'No ThinkTank structure found',
+                hint: 'This project does not have .edspark/thinktank/ directory',
+              }),
+            }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{
+            type: 'text' as const,
+            text: context,
+          }],
+        };
+      }
+
+      case 'get_department_context': {
+        const department = safeArgs.department as string;
+        const projectPath = safeArgs.projectPath as string | undefined;
+        const context = generateDepartmentContext(department, projectPath);
+        if (!context) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: `Department not found: ${department}`,
+                hint: 'Check .edspark/thinktank/contexts/ for available departments',
+              }),
+            }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{
+            type: 'text' as const,
+            text: context,
+          }],
+        };
+      }
+
+      case 'has_thinktank': {
+        const projectPath = safeArgs.projectPath as string | undefined;
+        const hasStructure = hasThinkTankStructure(projectPath);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ hasThinkTank: hasStructure }),
           }],
         };
       }

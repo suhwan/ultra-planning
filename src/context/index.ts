@@ -67,3 +67,26 @@ export * from './advanced-monitor.js';
 
 // Checkpoint and handoff structures
 export * from './checkpoint-return.js';
+
+// ============================================================================
+// ThinkTank Context (EdSpark Integration)
+// ============================================================================
+
+// ThinkTank context loader for GSD Planner injection
+export {
+  hasThinkTankStructure,
+  loadThinkTankContext,
+  loadAgentTemplates,
+  loadDepartmentContexts,
+  generatePlannerContext,
+  generateDepartmentContext,
+  generateDepartmentsSummary,
+  generateAgentsSummary,
+  generateExecutionFlowSummary,
+} from './thinktank-loader.js';
+
+export type {
+  ThinkTankContext,
+  AgentTemplate,
+  DepartmentContext,
+} from './thinktank-loader.js';
