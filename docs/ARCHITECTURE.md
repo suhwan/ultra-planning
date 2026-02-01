@@ -725,6 +725,212 @@ PLAN.md 태스크 구조:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### 7.5 Swarm (N-에이전트 협업)
+
+**Swarm**은 N개의 에이전트가 공유 태스크 풀에서 원자적으로 태스크를 claim하는 패턴입니다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         SWARM MODE                               │
+│                                                                  │
+│  명령: /swarm 5:executor "fix all TypeScript errors"            │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                  Shared Task Pool                            ││
+│  │                                                              ││
+│  │  [T1: pending] [T2: pending] [T3: pending] [T4: pending]    ││
+│  │  [T5: pending] [T6: pending] [T7: pending] [T8: pending]    ││
+│  │                                                              ││
+│  └──────────────────────────┬──────────────────────────────────┘│
+│                             │                                    │
+│         ┌───────────────────┼───────────────────┐               │
+│         │         │         │         │         │               │
+│    ┌────▼───┐┌────▼───┐┌────▼───┐┌────▼───┐┌────▼───┐          │
+│    │Worker 1││Worker 2││Worker 3││Worker 4││Worker 5│          │
+│    │claim T1││claim T2││claim T3││claim T4││claim T5│          │
+│    └───┬────┘└───┬────┘└───┬────┘└───┬────┘└───┬────┘          │
+│        │         │         │         │         │                │
+│        ▼         ▼         ▼         ▼         ▼                │
+│     Execute   Execute   Execute   Execute   Execute             │
+│        │         │         │         │         │                │
+│        ▼         ▼         ▼         ▼         ▼                │
+│     [done]    [done]    [done]    [done]    [done]              │
+│        │         │         │         │         │                │
+│        └─────────┴─────────┴─────────┴─────────┘                │
+│                             │                                    │
+│                    다음 pending 태스크 claim                     │
+│                    (T6, T7, T8...)                               │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ 특징:                                                        ││
+│  │ - 원자적 태스크 claim (동시 claim 방지)                      ││
+│  │ - 5분 타임아웃 (미완료 시 자동 release)                      ││
+│  │ - 모든 태스크 완료 시 종료                                   ││
+│  │ - 상태 파일: .omc/state/swarm-state.json                     ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Swarm 사용 예시:**
+
+```bash
+# 5개 executor로 TypeScript 에러 수정
+/swarm 5:executor "fix all TypeScript errors"
+
+# 3개 researcher로 API 문서 조사
+/swarm 3:researcher "research authentication APIs"
+
+# 4개 designer로 UI 컴포넌트 구현
+/swarm 4:designer "implement dashboard components"
+```
+
+**Swarm 태스크 상태:**
+
+| 상태 | 설명 |
+|------|------|
+| `pending` | 대기 중, claim 가능 |
+| `claimed` | 워커가 작업 중 |
+| `done` | 완료됨 |
+| `timeout` | 5분 초과, 자동 release → pending |
+
+### 7.6 Pipeline (순차 에이전트 체인)
+
+**Pipeline**은 에이전트들을 순차적으로 연결하여 데이터를 전달하는 패턴입니다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        PIPELINE MODE                             │
+│                                                                  │
+│  명령: /pipeline explore:haiku -> architect:opus -> executor    │
+│                                                                  │
+│  ┌──────────┐      ┌──────────┐      ┌──────────┐              │
+│  │  Stage 1 │      │  Stage 2 │      │  Stage 3 │              │
+│  │ explore  │ ───► │ architect│ ───► │ executor │              │
+│  │ (haiku)  │      │ (opus)   │      │ (sonnet) │              │
+│  └────┬─────┘      └────┬─────┘      └────┬─────┘              │
+│       │                 │                 │                     │
+│       ▼                 ▼                 ▼                     │
+│  "파일 구조와      "아키텍처 분석:    "구현 완료:              │
+│   패턴 발견..."     개선점..."         파일 수정..."           │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ 데이터 흐름:                                                 ││
+│  │                                                              ││
+│  │  Input ─► Stage 1 Output ─► Stage 2 Output ─► Final Output  ││
+│  │                                                              ││
+│  │  각 스테이지는 이전 스테이지의 출력을 입력으로 받음          ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Built-in Pipeline Presets:**
+
+| Preset | 스테이지 | 용도 |
+|--------|----------|------|
+| `review` | explore → architect → critic → executor | 코드 리뷰 후 수정 |
+| `implement` | planner → executor → tdd-guide | 계획 → 구현 → 테스트 |
+| `debug` | explore → architect → build-fixer | 버그 조사 → 수정 |
+| `research` | parallel(researcher, explore) → architect → writer | 조사 → 분석 → 문서화 |
+| `refactor` | explore → architect-medium → executor-high → qa-tester | 리팩토링 전체 흐름 |
+| `security` | explore → security-reviewer → executor → security-reviewer-low | 보안 검토 → 수정 → 재검토 |
+
+**Pipeline 사용 예시:**
+
+```bash
+# Built-in preset 사용
+/pipeline review "src/auth/"
+/pipeline debug "login error"
+
+# Custom pipeline 정의
+/pipeline explore:haiku -> architect:opus -> executor:sonnet
+/pipeline researcher -> planner -> executor -> qa-tester
+```
+
+### 7.7 Ultrapilot (파일 소유권 분할 병렬)
+
+**Ultrapilot**은 파일 소유권을 분할하여 최대 5개 워커가 충돌 없이 동시 작업하는 패턴입니다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       ULTRAPILOT MODE                            │
+│                                                                  │
+│  명령: /ultrapilot "build a todo app with React"                │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │           Task Decomposition Engine                          ││
+│  │                                                              ││
+│  │  "todo app" → [                                              ││
+│  │    { task: "API routes", files: ["src/api/*"] },             ││
+│  │    { task: "Components", files: ["src/components/*"] },      ││
+│  │    { task: "State mgmt", files: ["src/store/*"] },           ││
+│  │    { task: "Styles", files: ["src/styles/*"] },              ││
+│  │    { task: "Tests", files: ["src/__tests__/*"] }             ││
+│  │  ]                                                           ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                             │                                    │
+│                             ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │         File Ownership Coordinator                           ││
+│  │                                                              ││
+│  │  Worker 1: owns src/api/*        (exclusive)                 ││
+│  │  Worker 2: owns src/components/* (exclusive)                 ││
+│  │  Worker 3: owns src/store/*      (exclusive)                 ││
+│  │  Worker 4: owns src/styles/*     (exclusive)                 ││
+│  │  Worker 5: owns src/__tests__/*  (exclusive)                 ││
+│  │                                                              ││
+│  │  Shared files (src/index.ts): Coordinator manages            ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                             │                                    │
+│       ┌─────────────────────┼─────────────────────┐             │
+│       │         │           │           │         │             │
+│  ┌────▼───┐┌────▼───┐┌─────▼────┐┌────▼───┐┌────▼───┐          │
+│  │Worker 1││Worker 2││Worker 3  ││Worker 4││Worker 5│          │
+│  │API     ││Comps   ││State     ││Styles  ││Tests   │          │
+│  └───┬────┘└───┬────┘└────┬─────┘└───┬────┘└───┬────┘          │
+│      │         │          │          │         │                │
+│      ▼         ▼          ▼          ▼         ▼                │
+│   [done]    [done]     [done]     [done]    [done]              │
+│      │         │          │          │         │                │
+│      └─────────┴──────────┴──────────┴─────────┘                │
+│                             │                                    │
+│                             ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │              Integration & Conflict Resolution               ││
+│  │                                                              ││
+│  │  - 각 워커 결과 통합                                         ││
+│  │  - Shared file 충돌 감지 및 해결                             ││
+│  │  - 최종 빌드 검증                                            ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+│  상태 파일:                                                      │
+│  - .omc/state/ultrapilot-state.json     (세션 상태)             │
+│  - .omc/state/ultrapilot-ownership.json (파일 소유권)           │
+│                                                                  │
+│  성능: 일반 autopilot 대비 3-5배 빠름                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Ultrapilot 특징:**
+
+| 특징 | 설명 |
+|------|------|
+| **파일 소유권** | 각 워커가 특정 파일/디렉토리 exclusive 소유 |
+| **충돌 방지** | 소유권 분할로 동시 수정 충돌 원천 차단 |
+| **Shared 파일** | Coordinator가 순차적으로 관리 |
+| **자동 분해** | 복잡한 태스크를 병렬화 가능한 서브태스크로 분해 |
+| **최적 사용처** | 멀티 컴포넌트 시스템, 풀스택 앱, 대규모 리팩토링 |
+
+### 7.8 병렬 실행 모드 비교
+
+| 모드 | 태스크 할당 | 에이전트 수 | 파일 충돌 처리 | 사용 시점 |
+|------|------------|------------|---------------|----------|
+| **Wave** | 정적 (PLAN.md) | 1 (순차 Wave) | Wave로 분리 | `/ultraplan:execute` |
+| **UltraWork** | Wave 내 병렬 | 최대 5 | Wave 내 non-overlapping | `ulw:`, `/ultrawork` |
+| **EcoMode** | 복잡도별 라우팅 | 모델별 제한 | Wave 기반 | `eco:`, `/ecomode` |
+| **Swarm** | 동적 claim | N개 지정 | 태스크 단위 격리 | `/swarm N:agent` |
+| **Pipeline** | 순차 체인 | 스테이지 수 | 해당 없음 | `/pipeline a→b→c` |
+| **Ultrapilot** | 파일 소유권 분할 | 최대 5 | 소유권으로 분리 | `/ultrapilot` |
+
 ---
 
 ## 8. 태스크 관리
