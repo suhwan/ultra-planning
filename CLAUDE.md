@@ -1,5 +1,63 @@
 # Ultra Planning Project
 
+## CRITICAL: Agent Workflow Guidelines
+
+**This project uses a HYBRID workflow. Follow these rules STRICTLY.**
+
+### Agent Selection (MANDATORY)
+
+| Phase | Agent to Use | Model | NEVER Use |
+|-------|--------------|-------|-----------|
+| Research | `gsd-phase-researcher` | opus | - |
+| Planning | `gsd-planner` | opus | - |
+| Execution | `ultraplan-executor` | opus | `oh-my-claudecode:executor` |
+| Verification | `ultraplan-architect` | opus | - |
+| Critique | `ultraplan-critic` | opus | - |
+| Build Fixes | `oh-my-claudecode:build-fixer` | sonnet | - |
+
+### Execution Protocol
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PLAN-PHASE WORKFLOW                                        │
+│                                                             │
+│  1. RESEARCH: gsd-phase-researcher (opus)                   │
+│  2. PLAN: gsd-planner (opus)                                │
+│  3. VERIFY PLAN: ultraplan-architect + ultraplan-critic     │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  EXECUTE-PLAN WORKFLOW                                      │
+│                                                             │
+│  For each task in PLAN.md:                                  │
+│  1. EXECUTE: ultraplan-executor (opus) - single task        │
+│  2. VERIFY: ultraplan-architect (opus) - verify completion  │
+│  3. If verification fails → retry with feedback             │
+│  4. After success → atomic commit                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Model Tier Enforcement
+
+**ALL code execution and planning MUST use `model: opus`**
+
+| Task Type | Model | Rationale |
+|-----------|-------|-----------|
+| Code writing | opus | Quality code generation |
+| Planning | opus | Strategic thinking |
+| Verification | opus | Deep analysis |
+| Build fixing | sonnet | Speed for simple fixes |
+| Quick lookups | haiku | Token efficiency |
+
+### FORBIDDEN
+
+1. **NEVER** use `oh-my-claudecode:executor` for task execution
+2. **NEVER** use `sonnet` model for code generation tasks
+3. **NEVER** skip verification after task completion
+4. **NEVER** claim completion without running verify command
+
+---
+
 ## Unattended Execution Mode
 
 When `/thorough all` or `/thorough from {N}` is running:

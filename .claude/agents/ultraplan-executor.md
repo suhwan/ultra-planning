@@ -1,7 +1,7 @@
 ---
 name: ultraplan-executor
 description: Task execution agent that runs individual tasks from PLAN.md with fresh 200k context. Spawned by orchestrator for each task.
-model: sonnet
+model: opus
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
