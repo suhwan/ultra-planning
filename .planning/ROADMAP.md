@@ -33,7 +33,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 13: Central Registry** - 에이전트/스킬 중앙 저장소
 - [x] **Phase 14: Artifact Pattern** - JIT 로딩으로 토큰 효율화
 - [x] **Phase 15: Layered Memory** - Working/Short/Long-term 메모리 분리
-- [ ] **Phase 16: Context Compaction** - 자동 압축 고도화
+- [x] **Phase 16: Context Compaction** - 자동 압축 고도화
 
 ## Phase Details
 
