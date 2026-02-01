@@ -38,6 +38,7 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 
 ### v4.1 - Oh-My-OpenCode Feature Absorption
 - [x] **Phase 18: Hook System** - 35+ 훅 시스템 (todo-continuation, context-monitor, background-notification 등)
+- [x] **Phase 18.5: Hook Bridge** - Claude Code 네이티브 훅 ↔ Ultra-Planning 훅 연결 브릿지
 - [ ] **Phase 19: Extended Agent System** - 10+ 에이전트 확장 (Oracle, Librarian, Atlas, Metis, Momus 등)
 - [ ] **Phase 20: Category-based Routing** - 카테고리 기반 모델 라우팅 (visual-engineering, ultrabrain, quick 등)
 - [ ] **Phase 21: Background Manager** - 백그라운드 에이전트 매니저 (동시성 제어, 태스크 큐, 알림)
@@ -643,6 +644,7 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | 17. Parallel Execution | 5/5 | Complete | 2026-02-01 |
 | **v4.1 - OMO Absorption** | | | |
 | 18. Hook System | 5/5 | Complete | 2026-02-01 |
+| 18.5. Hook Bridge | 1/1 | Complete | 2026-02-01 |
 | 19. Extended Agent System | 0/4 | Planned | - |
 | 20. Category-based Routing | 0/3 | Planned | - |
 | 21. Background Manager | 0/4 | Planned | - |
