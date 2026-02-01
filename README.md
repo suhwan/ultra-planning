@@ -1,127 +1,250 @@
-# Ultra Planner v3.1.1
+# Ultra Planner v4.0
 
 > **"실행하지 않는다. 맥락을 설계한다."**
 > (Don't execute, design context.)
 
-Ultra Planner는 Claude Code를 위한 **Context Architect**입니다. **GSD의 계획력 + OMC의 전문성 + Ultra Planner의 오케스트레이션**을 결합한 하이브리드 아키텍처입니다.
+Ultra Planner는 Claude Code를 위한 **Context Architect**입니다.
 
-## What's New in v3.1.1
+---
 
-### Dynamic Skill Injection
+## ⚠️ MANDATORY WORKFLOW
 
-오케스트레이터가 컨텍스트를 분석하여 에이전트 프롬프트에 스킬을 자동 주입합니다:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Orchestrator                                                    │
-│       │                                                          │
-│       ▼                                                          │
-│  ┌─────────────────┐    ┌─────────────────┐                     │
-│  │ Context Analysis │───▶│  Skill Registry │                     │
-│  │ (errors, images, │    │ (.ultraplan/    │                     │
-│  │  TDD mode, etc.) │    │  skills/*.yaml) │                     │
-│  └─────────────────┘    └────────┬────────┘                     │
-│                                  │                               │
-│                                  ▼                               │
-│                     ┌────────────────────┐                       │
-│                     │  Inject Skills to  │                       │
-│                     │  Agent Prompt      │                       │
-│                     └────────────────────┘                       │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-| Trigger | Auto-Injected Skill |
-|---------|---------------------|
-| Build error | `build-fix` |
-| Execution complete | `security-review` |
-| Image input | `vision-analysis` |
-| TDD mode | `tdd-guide` |
-
-## What's New in v3.1
-
-### Hybrid Integration
+**이 워크플로우를 따르지 않으면 Ultra Planner를 사용하는 의미가 없습니다.**
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Ultra Planner v3.1 Hybrid Architecture                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────────┐                                           │
-│  │  Orchestration   │  Ultra Planner                            │
-│  │  + MCP Tools     │  (70+ context tools)                      │
-│  └────────┬─────────┘                                           │
-│           │                                                      │
-│  ┌────────▼─────────┐  ┌──────────────────┐                     │
-│  │     Research     │  │     Planning     │                     │
-│  │  GSD Researcher  │  │   GSD Planner    │                     │
-│  │  (Context7,      │  │  (논리적 Task    │                     │
-│  │   검증 프로토콜) │  │   분리)          │                     │
-│  └────────┬─────────┘  └────────┬─────────┘                     │
-│           │                     │                                │
-│  ┌────────▼─────────────────────▼─────────┐                     │
-│  │          Ralplan Verification           │                     │
-│  │  ultraplan-architect + ultraplan-critic │                     │
-│  └────────────────────┬───────────────────┘                     │
-│                       │                                          │
-│  ┌────────────────────▼───────────────────┐                     │
-│  │             Execution                   │                     │
-│  │  ultraplan-executor                     │                     │
-│  │  + build-fixer (에러 자동 수정)         │  ← OMC              │
-│  │  + security-reviewer (보안 스캔)        │  ← OMC              │
-│  │  + code-reviewer (품질 체크)            │  ← OMC              │
-│  └─────────────────────────────────────────┘                     │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ /ultraplan:plan-phase {N}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  STEP 1: RESEARCH                                                       │
+│  Agent: gsd-phase-researcher (opus)                                     │
+│  Output: .planning/phases/{NN}-*/RESEARCH.md                            │
+│                                                                         │
+│  • Context7로 라이브러리 문서 조회                                       │
+│  • WebSearch로 최신 패턴 조사                                            │
+│  • 코드베이스 탐색으로 기존 패턴 파악                                     │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  STEP 2: PLAN GENERATION                                                │
+│  Agent: gsd-planner (opus)                                              │
+│  Output: .planning/phases/{NN}-*/{NN}-01-PLAN.md, {NN}-02-PLAN.md, ...  │
+│                                                                         │
+│  • 목표역산 (Goal-Backward) 방법론                                      │
+│  • 논리적 컨텍스트 기반 태스크 분리                                      │
+│  • Wave 기반 의존성 설정                                                 │
+│  • must_haves (truths, artifacts, key_links) 도출                       │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  STEP 3: RALPLAN VERIFICATION (합의까지 반복, 최대 5회)                  │
+│                                                                         │
+│     ┌──────────────┐       ┌──────────────┐       ┌──────────────┐     │
+│     │  gsd-planner │──────▶│  ultraplan-  │──────▶│  ultraplan-  │     │
+│     │    (opus)    │       │  architect   │       │    critic    │     │
+│     └──────────────┘       └──────────────┘       └──────────────┘     │
+│            ▲                      │                      │              │
+│            │    ISSUES FOUND      │                      │              │
+│            └──────────────────────┘                      │              │
+│            │                          NOT SATISFIED      │              │
+│            └─────────────────────────────────────────────┘              │
+│                                                                         │
+│  종료 조건: Architect APPROVED + Critic SATISFIED                       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ /ultraplan:execute {plan}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  STEP 1: NATIVE TASKS 등록 (MANDATORY)                                  │
+│                                                                         │
+│  PLAN.md 파싱 후 Claude Code Tasks에 등록:                               │
+│                                                                         │
+│  TaskCreate("16-01-01: Add types")           → #6 (no blockers)         │
+│  TaskCreate("16-01-02: Implement monitor")   → #5                       │
+│  TaskUpdate(#5, blockedBy: [#6])                                        │
+│  TaskCreate("16-01-03: Add tests")           → #7                       │
+│  TaskUpdate(#7, blockedBy: [#5])                                        │
+│                                                                         │
+│  결과:                                                                   │
+│  #6 [pending] 16-01-01: Add types                                       │
+│  #5 [pending] 16-01-02: Implement monitor [blocked by #6]               │
+│  #7 [pending] 16-01-03: Add tests [blocked by #5]                       │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  STEP 2: WAVE 기반 병렬 실행                                             │
+│                                                                         │
+│  FOR each unblocked task:                                               │
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │  2.1 TaskUpdate(taskId, status: in_progress)                      │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                  │                                      │
+│                                  ▼                                      │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │  2.2 EXECUTE                                                      │ │
+│  │      Agent: ultraplan-executor (opus)                             │ │
+│  │      Input: <task> XML from PLAN.md                               │ │
+│  │      Output: YAML result (success/failure/blocked)                │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                  │                                      │
+│                                  ▼                                      │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │  2.3 VERIFY                                                       │ │
+│  │      Agent: ultraplan-architect (opus)                            │ │
+│  │      ├─ APPROVED → 2.4로 진행                                     │ │
+│  │      └─ REJECTED → 피드백과 함께 2.2 재실행                        │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                  │                                      │
+│                                  ▼                                      │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │  2.4 TaskUpdate(taskId, status: completed)                        │ │
+│  │      → blockedBy에 이 task가 있던 다른 tasks가 unblock됨           │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                  │                                      │
+│                                  ▼                                      │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │  2.5 ATOMIC COMMIT                                                │ │
+│  │      git add {files} && git commit -m "feat({task}): {desc}"      │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│  (BUILD ERROR 발생 시)                                                   │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │  Agent: oh-my-claudecode:build-fixer (sonnet)                     │ │
+│  │  → 빌드 에러 수정 후 2.3 재실행                                     │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  STEP 3: PHASE 완료                                                     │
+│                                                                         │
+│  1. ROADMAP.md 체크박스 업데이트: - [ ] → - [x]                          │
+│  2. Phase 단위 커밋: feat(phase-N): complete {phase-name}               │
+│  3. Unattended mode: 다음 Phase로 자동 진행                             │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### New Features
+---
+
+## Agent Selection (MANDATORY)
+
+| 단계 | Agent | Model | NEVER Use |
+|------|-------|-------|-----------|
+| Research | `gsd-phase-researcher` | opus | - |
+| Planning | `gsd-planner` | opus | - |
+| Execution | `ultraplan-executor` | **opus** | `oh-my-claudecode:executor` |
+| Verification | `ultraplan-architect` | opus | - |
+| Critique | `ultraplan-critic` | opus | - |
+| Build Fixes | `oh-my-claudecode:build-fixer` | sonnet | - |
+
+### FORBIDDEN
+
+1. **NEVER** use `oh-my-claudecode:executor` for task execution
+2. **NEVER** use `sonnet` model for code generation tasks
+3. **NEVER** skip verification after task completion
+4. **NEVER** execute tasks without Native Tasks registration
+5. **NEVER** skip blockedBy setup for multi-wave plans
+
+---
+
+## Native Tasks Protocol (MANDATORY)
+
+### Task Registration
+
+```typescript
+// Wave 1: No blockers
+TaskCreate({ subject: "16-01-01: Add types", ... })  // → #6
+
+// Wave 2: Blocked by Wave 1
+TaskCreate({ subject: "16-01-02: Implement", ... })  // → #5
+TaskUpdate({ taskId: "5", addBlockedBy: ["6"] })
+
+// Wave 3: Blocked by Wave 2
+TaskCreate({ subject: "16-01-03: Tests", ... })      // → #7
+TaskUpdate({ taskId: "7", addBlockedBy: ["5"] })
+```
+
+### Execution Flow
+
+```
+실행 전:
+  #6 [pending] Task 1              ← Wave 1 (unblocked)
+  #5 [pending] Task 2 [blocked by #6]  ← Wave 2
+  #7 [pending] Task 3 [blocked by #5]  ← Wave 3
+
+#6 실행 중:
+  #6 [in_progress] Task 1          ← 현재 실행 중
+  #5 [pending] Task 2 [blocked by #6]
+  #7 [pending] Task 3 [blocked by #5]
+
+#6 완료 후:
+  #6 [completed] Task 1
+  #5 [pending] Task 2              ← 이제 unblocked!
+  #7 [pending] Task 3 [blocked by #5]
+```
+
+### Status Updates
+
+| When | Action |
+|------|--------|
+| Task created | status: pending (default) |
+| About to execute | TaskUpdate status: in_progress |
+| Executor returns success | TaskUpdate status: completed |
+| Executor returns failure | Keep in_progress, retry |
+
+---
+
+## What's New in v4.0
+
+### Context Architect Pattern
 
 | Feature | Description |
 |---------|-------------|
-| **Dynamic Skill Injection** | 컨텍스트 기반 자동 스킬 매칭/주입 (v3.1.1) |
-| **GSD Research** | Context7 지원, 5개 파일 출력, 검증 프로토콜 |
-| **GSD Planning** | 논리적 컨텍스트 기반 Task 분리 |
-| **OMC Agents** | build-fixer, security-reviewer, code-reviewer, tdd-guide, vision |
-| **Model Profiles** | quality / balanced / budget 모드 |
-| **Auto Build-Fix** | executor 에러 시 자동 수정 |
-| **Auto Security** | 완료 후 자동 보안 스캔 |
-| **discuss-phase** | 계획 전 맥락 수집 명령어 |
-| **debug** | 체계적 디버깅 명령어 |
+| **Layered Memory** | Working/ShortTerm/LongTerm 3-layer 메모리 |
+| **Artifact Pattern** | JIT 로딩으로 토큰 90% 절약 |
+| **Context Compaction** | 80% 도달 시 자동 압축 |
+| **Central Registry** | 프로젝트 간 스킬/에이전트 공유 |
+| **Native Tasks** | Claude Code Tasks로 의존성 추적 |
 
-## Features
+### New Files (v4.0)
 
-### Core Capabilities
+```
+src/
+├── memory/                # Layered Memory System
+│   ├── types.ts           # MemoryLayer, WorkingMemory, etc.
+│   ├── working.ts         # Volatile task state
+│   ├── short-term.ts      # Session state (STATE.md)
+│   ├── long-term.ts       # Persistent wisdom
+│   ├── extractor.ts       # Wisdom extraction
+│   ├── collector.ts       # Auto-collection
+│   ├── session-loader.ts  # Session initialization
+│   └── prompt-injector.ts # Wisdom injection
+│
+├── artifacts/             # Artifact Pattern
+│   ├── types.ts           # ArtifactReference, ArtifactCollection
+│   ├── reference.ts       # createArtifactReference
+│   └── prompt-templates.ts # JIT loading prompts
+│
+├── registry/              # Central Registry
+│   ├── types.ts           # RegistryEntry, RegistryConfig
+│   ├── skills.ts          # SkillRegistry
+│   └── agents.ts          # AgentRegistry
+│
+└── context/               # Context Compaction
+    ├── advanced-monitor.ts # 80% auto-compaction detection
+    ├── extractor.ts        # CoreInfo extraction
+    ├── auto-compaction.ts  # AutoCompactionManager
+    └── fresh-start.ts      # Session continuation
+```
 
-| Feature | Description |
-|---------|-------------|
-| **Context Architect** | 맥락 수집, 주입, 압축 - Claude Code가 실행 |
-| **Skill Injection** | 컨텍스트 분석 → 스킬 자동 매칭 → 프롬프트 주입 |
-| **GSD Research** | Context7, 신뢰도 계층 (HIGH/MEDIUM/LOW), 5개 구조화 파일 |
-| **GSD Planning** | 논리적 컨텍스트 기반 Task 분리, Goal-backward 방법론 |
-| **Ralplan Verification** | Architect + Critic 합의까지 검증 |
-| **OMC Quality Gates** | build-fixer, security-reviewer, code-reviewer 자동 호출 |
-| **Model Profiles** | quality/balanced/budget - 비용 최적화 |
-| **병렬 실행** | Wave 기반 태스크 병렬 처리 (Swarm 패턴) |
-| **Hints (AI Decides)** | 규칙이 아닌 힌트 - AI가 최종 결정 |
-| **Wisdom 축적** | 학습, 결정, 이슈 기록 - 세션 간 지속 |
-
-### Integrated Components
-
-| Source | Components | Purpose |
-|--------|------------|---------|
-| **GSD** | gsd-project-researcher | 프로젝트 리서치 (Context7) |
-| | gsd-phase-researcher | Phase 리서치 (검증 프로토콜) |
-| | gsd-planner | 논리적 Task 분리 |
-| **OMC** | build-fixer / low | 빌드 에러 자동 수정 |
-| | security-reviewer / low | OWASP Top 10 보안 스캔 |
-| | code-reviewer / low | 코드 품질 체크 |
-| | tdd-guide / low | TDD 강제 |
-| | vision | 이미지/다이어그램 분석 |
-| **Ultra Planner** | 오케스트레이션 | /ultraplan:* 명령어 |
-| | MCP Tools (70+) | 컨텍스트 수집/주입/힌트 |
-| | ultraplan-architect | Ralplan 검증 |
-| | ultraplan-critic | Ralplan 비판 |
-| | ultraplan-executor | Task 실행 |
+---
 
 ## Installation
 
@@ -147,320 +270,54 @@ npm run build
 }
 ```
 
-### 3. 스킬/커맨드 설치 (선택)
+### 3. 스킬/커맨드 설치
 
 ```bash
 # 전역 설치
-mkdir -p ~/.claude/commands ~/.claude/skills
+mkdir -p ~/.claude/commands ~/.claude/agents
 ln -sf /path/to/ultra-planning/.claude/commands/* ~/.claude/commands/
-ln -sf /path/to/ultra-planning/.claude/skills/* ~/.claude/skills/
-
-# 또는 프로젝트별 설치
-cp -r /path/to/ultra-planning/.claude /your/project/
+ln -sf /path/to/ultra-planning/.claude/agents/* ~/.claude/agents/
 ```
 
-### 4. GSD/OMC 업데이트
+---
 
-```bash
-# 레퍼런스 최신화
-./scripts/update-references.sh
-```
+## Commands
 
-## Model Profiles
+| Command | Description |
+|---------|-------------|
+| `/ultraplan:new-project` | 새 프로젝트 초기화 (Research → Plan → Ralplan) |
+| `/ultraplan:plan-phase {N}` | Phase N 계획 생성 |
+| `/ultraplan:execute {plan}` | 계획 실행 (Native Tasks + Wave 병렬) |
+| `/ultraplan:fresh-start` | 압축된 컨텍스트로 세션 재개 |
+| `/thorough all` | 모든 미완료 Phase 자동 실행 |
+| `/thorough from {N}` | Phase N부터 끝까지 실행 |
 
-`.ultraplan/config.json`:
-
-```json
-{
-  "modelProfile": "balanced",
-  "profiles": {
-    "quality": {
-      "description": "Maximum quality, higher cost",
-      "routing": {
-        "research": "opus",
-        "planning": "opus",
-        "execution": "opus"
-      }
-    },
-    "balanced": {
-      "description": "Balance between quality and cost (default)",
-      "routing": {
-        "research": "opus",
-        "planning": "opus",
-        "execution": "sonnet"
-      }
-    },
-    "budget": {
-      "description": "Minimize cost, use haiku where possible",
-      "routing": {
-        "research": "sonnet",
-        "planning": "sonnet",
-        "execution": "haiku"
-      }
-    }
-  }
-}
-```
-
-## Workflows
-
-### /ultraplan:new-project
-
-새 프로젝트 초기화 - GSD Research → GSD Plan → Ralplan 검증:
-
-```
-/ultraplan:new-project [description] [--skip-research]
-```
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  1. RESEARCH — GSD Project Researcher                        │
-│     • Context7로 최신 라이브러리 문서 조회                    │
-│     • 신뢰도 계층: HIGH/MEDIUM/LOW                           │
-│     • 5개 파일 출력: SUMMARY, STACK, FEATURES, ARCH, PITFALLS│
-│                                                              │
-│  2. PLAN — GSD Planner                                       │
-│     • 논리적 컨텍스트 기반 Task 분리                          │
-│     • Goal-backward 방법론                                   │
-│     • PROJECT.md, ROADMAP.md 생성                            │
-│                                                              │
-│  3. RALPLAN — Ultra Planner 검증                             │
-│     • ultraplan-architect 검토                               │
-│     • ultraplan-critic 검토                                  │
-│     • 80% 이상 통과시 승인                                   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### /ultraplan:discuss-phase (NEW)
-
-계획 전 맥락 수집:
-
-```
-/ultraplan:discuss-phase [phase-number]
-```
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  1. EXPLORE — Phase 목표와 코드베이스 분석                   │
-│  2. IDENTIFY — Claude가 결정해야 할 사항 파악               │
-│  3. INTERVIEW — 적응형 질문으로 맥락 수집                   │
-│  4. DOCUMENT — CONTEXT.md 생성                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### /ultraplan:plan-phase
-
-특정 Phase 계획 생성:
-
-```
-/ultraplan:plan-phase [phase-number] [--skip-research]
-```
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  1. (Optional) discuss-phase — 맥락 수집                    │
-│  2. GSD Phase Research — Context7 기반 구현 방법 조사       │
-│  3. GSD Plan — 논리적 Task 분리 + PLAN.md 생성              │
-│  4. Ralplan Verification — Architect + Critic 검증          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### /ultraplan:execute
-
-Phase 실행 + 자동 품질 게이트:
-
-```
-/ultraplan:execute [plan-path] [--tdd]
-```
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Wave-based Execution + Quality Gates                        │
-│                                                              │
-│  Wave 1: [Task A] [Task B] [Task C]  ← 병렬 실행             │
-│              ↓                                               │
-│        [에러 발생?] → build-fixer 자동 호출                  │
-│              ↓                                               │
-│  Wave 2: [Task D] [Task E]           ← Wave 1 완료 후        │
-│              ↓                                               │
-│  완료 후:                                                    │
-│    • security-reviewer 자동 호출                             │
-│    • (옵션) code-reviewer 호출                               │
-│    • ultraplan-architect 최종 검증                           │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### /ultraplan:debug (NEW)
-
-체계적 디버깅:
-
-```
-/ultraplan:debug [problem] [--resume]
-```
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  1. REPRODUCE — 문제 재현 및 증상 기록                       │
-│  2. HYPOTHESIZE — 가능한 원인 가설 수립                     │
-│  3. TEST — 가설 검증 (하나씩)                               │
-│  4. FIX — 원인 확인 후 수정 (build-fixer 연계)              │
-│  5. VERIFY — 수정 검증 및 회귀 테스트                       │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### /thorough
-
-GSD 플랜 생성 + Architect 검토 + 병렬 실행 자동화:
-
-```
-/thorough all              # 모든 Phase 실행
-/thorough from 3           # Phase 3부터 실행
-```
-
-## Architecture
-
-```
-ultra-planning/
-├── src/
-│   ├── context/              # Context Architect (v3.0 Core)
-│   ├── hints/                # AI 힌트 (규칙 아님)
-│   ├── skills/               # 스킬 레지스트리 + 인젝터 (v3.1.1)
-│   ├── prompts/              # 프롬프트 생성
-│   ├── notepad/              # Wisdom 축적
-│   ├── orchestration/        # 오케스트레이션
-│   ├── sync/                 # Claude Code 동기화
-│   └── mcp-server.ts         # MCP 서버 (77+ 도구)
-│
-├── .claude/
-│   ├── agents/               # 에이전트 정의
-│   │   ├── ultraplan-*.md    # Ultra Planner 에이전트
-│   │   ├── build-fixer*.md   # OMC 심볼릭 링크
-│   │   ├── security-*.md     # OMC 심볼릭 링크
-│   │   ├── code-reviewer*.md # OMC 심볼릭 링크
-│   │   ├── tdd-guide*.md     # OMC 심볼릭 링크
-│   │   └── vision.md         # OMC 심볼릭 링크
-│   │
-│   ├── commands/             # 슬래시 커맨드
-│   │   ├── ultraplan-new-project.md
-│   │   ├── ultraplan-plan-phase.md
-│   │   ├── ultraplan-execute.md
-│   │   ├── ultraplan-discuss-phase.md
-│   │   ├── ultraplan-debug.md
-│   │   └── fresh-start.md
-│   │
-│   └── skills/
-│
-├── .ultraplan/
-│   ├── config.json           # Model Profiles
-│   └── skills/               # 스킬 정의서 (YAML)
-│       ├── _index.yaml       # 카테고리, 자동 선택 규칙
-│       ├── build-fix.yaml
-│       ├── security-review.yaml
-│       ├── tdd-guide.yaml
-│       └── vision-analysis.yaml
-│
-├── references/               # 외부 시스템 (git repos)
-│   ├── get-shit-done/        # GSD 에이전트
-│   └── oh-my-claudecode/     # OMC 에이전트
-│
-├── scripts/
-│   └── update-references.sh  # GSD/OMC 업데이트
-│
-└── docs/
-    └── HYBRID-INTEGRATION.md # 통합 가이드
-```
-
-## MCP Tools (70+)
-
-### Context Tools
-| Tool | Description |
-|------|-------------|
-| `collect_project_context` | PROJECT.md, ROADMAP.md, REQUIREMENTS.md 수집 |
-| `collect_phase_context` | 페이즈 리서치 및 계획 수집 |
-| `compress_context` | Fresh-start용 압축 (99% 압축률) |
-| `restore_context` | 스냅샷에서 복원 |
-
-### Hint Tools
-| Tool | Description |
-|------|-------------|
-| `suggest_complexity` | 복잡도 힌트 (isHint: true) |
-| `suggest_route` | 라우팅 힌트 (isHint: true) |
-| `get_task_hints` | 모든 힌트 통합 |
-
-### Plan Sync Tools
-| Tool | Description |
-|------|-------------|
-| `parse_plan` | PLAN.md 파싱 |
-| `get_execution_order` | Wave 순서 계산 |
-| `build_dependency_map` | 의존성 맵 생성 |
-| `calculate_progress` | 진행률 계산 |
-
-### Wisdom Tools
-| Tool | Description |
-|------|-------------|
-| `add_learning` | 학습 기록 |
-| `add_decision` | 결정 기록 |
-| `add_issue` | 이슈 기록 |
-| `get_wisdom` | 축적된 지혜 조회 |
-
-### Skill Injection Tools (v3.1.1)
-| Tool | Description |
-|------|-------------|
-| `match_skills` | 컨텍스트 기반 스킬 매칭 |
-| `inject_skills` | 에이전트 프롬프트에 스킬 주입 |
-| `inject_specific_skills` | 특정 스킬 강제 주입 |
-| `list_skills` | 스킬 목록 조회 |
-| `get_skill` | 스킬 상세 조회 |
-| `get_auto_selected_skills` | 자동 선택 스킬 조회 |
-
-(전체 70+ 도구 목록은 docs/HYBRID-INTEGRATION.md 참조)
-
-## Updating References
-
-GSD와 OMC는 정기적으로 업데이트됩니다:
-
-```bash
-./scripts/update-references.sh
-```
-
-## Version History
-
-### v3.1.1 - Dynamic Skill Injection (Current)
-- 스킬 레지스트리 시스템 (YAML 기반)
-- 오케스트레이터 자동 스킬 매칭/주입
-- MCP 도구 7개 추가
-
-### v3.1.0 - Hybrid Integration
-- GSD Research + Planning 통합 (Context7, 검증 프로토콜)
-- OMC Agent 통합 (build-fixer, security-reviewer, code-reviewer, tdd-guide, vision)
-- Model Profiles (quality/balanced/budget)
-- 새 명령어: discuss-phase, debug
-- 자동 품질 게이트 (build-fix, security-review)
-
-### v3.0 - Context Architect Pattern
-- Context collection, injection, compaction
-- Hints with `isHint: true` (AI decides, not rules)
-- Simplified swarm/pipeline to prompt generation only
-- 247 tests (11 test files)
-
-### v2.0 - Multi-agent Orchestration
-- Swarm pattern for parallel execution
-- Pipeline pattern with 6 presets
-- Deviation handling
-
-### v1.0 - Foundation
-- Basic planning workflow
-- PLAN.md format
-- Wave-based execution
+---
 
 ## Philosophy
 
 > **"Claude Code는 계속 발전한다. 우리는 발전을 따라가는 게 아니라, 발전 위에 올라타는 것이다."**
 
-Ultra Planner는 세 시스템의 장점을 결합합니다:
+Ultra Planner v4.0은 세 시스템의 장점을 결합합니다:
+
 - **GSD의 계획력** - 논리적 컨텍스트 기반 Task 분리, Context7 리서치
 - **OMC의 전문성** - build-fixer, security-reviewer, code-reviewer
-- **Ultra Planner의 오케스트레이션** - 70+ MCP 도구, Ralplan 검증
+- **Ultra Planner의 오케스트레이션** - MCP 도구, Ralplan 검증, Native Tasks
+
+---
+
+## Version History
+
+| Version | Codename | Key Features |
+|---------|----------|--------------|
+| v4.0 | Context Architect | Layered Memory, Artifact Pattern, Context Compaction, Native Tasks |
+| v3.1.1 | Skill Injection | 스킬 레지스트리, 자동 주입 |
+| v3.1 | Hybrid Integration | GSD + OMC 통합, Model Profiles |
+| v3.0 | Context Architect | Context collection/injection/compaction |
+| v2.0 | Multi-agent | Swarm, Pipeline patterns |
+| v1.0 | Foundation | Basic planning, PLAN.md format |
+
+---
 
 ## License
 
@@ -468,4 +325,4 @@ MIT
 
 ---
 
-*Made with Ultra Planner v3.1.1 - Dynamic Skill Injection*
+*Made with Ultra Planner v4.0 - Context Architect Pattern*
