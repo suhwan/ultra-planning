@@ -17,6 +17,8 @@ import {
   generateHeartbeatProtocol,
   getCategoryThinkingBudgetTokens,
   resolveCategory,
+  CATEGORY_PROMPT_APPEND,
+  enhancePromptWithCategory,
 } from './manager.js';
 import { DELEGATION_CATEGORIES, CATEGORY_AGENTS } from './types.js';
 
@@ -325,6 +327,41 @@ describe('Delegation Manager', () => {
     it('should have correct agent mappings', () => {
       expect(getAgentForCategory('unspecified-low').agent).toBe('executor-low');
       expect(getAgentForCategory('unspecified-high').agent).toBe('executor-high');
+    });
+  });
+
+  describe('CATEGORY_PROMPT_APPEND', () => {
+    it('should have entry for each category', () => {
+      const categories = listCategories();
+      for (const { category } of categories) {
+        expect(CATEGORY_PROMPT_APPEND).toHaveProperty(category);
+      }
+    });
+  });
+
+  describe('enhancePromptWithCategory', () => {
+    it('should append guidance for categories with content', () => {
+      const enhanced = enhancePromptWithCategory('Do the task', 'ultrabrain');
+      expect(enhanced).toContain('Do the task');
+      expect(enhanced).toContain('Category Guidance');
+      expect(enhanced).toContain('Root cause analysis');
+    });
+
+    it('should not modify prompt for categories without guidance', () => {
+      const enhanced = enhancePromptWithCategory('Find file', 'quick');
+      expect(enhanced).toBe('Find file');
+    });
+
+    it('should handle visual-engineering guidance', () => {
+      const enhanced = enhancePromptWithCategory('Create button', 'visual-engineering');
+      expect(enhanced).toContain('Accessibility');
+      expect(enhanced).toContain('Responsive design');
+    });
+
+    it('should handle writing guidance', () => {
+      const enhanced = enhancePromptWithCategory('Write docs', 'writing');
+      expect(enhanced).toContain('Clarity');
+      expect(enhanced).toContain('formatting');
     });
   });
 });

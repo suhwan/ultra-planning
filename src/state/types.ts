@@ -127,7 +127,9 @@ export type StateEventType =
   // Phase 18 additions - Session hooks events
   | 'session_idle_notification'
   | 'session_error_notification'
-  | 'slash_command_detected';
+  | 'slash_command_detected'
+  // Phase 20 additions - Category routing
+  | 'category_routing';
 
 /** Result of polling events from the event file */
 export interface EventPollResult {

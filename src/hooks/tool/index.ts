@@ -33,3 +33,4 @@ export * from './tool-output-truncator.js';
 export * from './empty-task-response-detector.js';
 export * from './edit-error-recovery.js';
 export * from './delegate-task-retry.js';
+export * from './category-routing.js';

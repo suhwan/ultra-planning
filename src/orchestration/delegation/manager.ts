@@ -348,3 +348,85 @@ export function needsHighTierModel(taskDescription: string): boolean {
   const model = getModelForCategory(category);
   return model === 'opus';
 }
+
+// ============================================================================
+// Category-Specific Prompt Enhancement
+// ============================================================================
+
+/**
+ * Category-specific prompt appendices.
+ * Provides domain-specific guidance for each category.
+ */
+export const CATEGORY_PROMPT_APPEND: Record<DelegationCategory, string> = {
+  quick: '',  // No additional guidance needed for simple lookups
+
+  standard: `
+Focus on:
+- Clean, maintainable implementation
+- Following existing codebase patterns
+- Appropriate error handling`,
+
+  complex: `
+Approach systematically:
+- Plan the refactoring steps
+- Minimize changes to public APIs
+- Consider backward compatibility
+- Test after each major change`,
+
+  ultrabrain: `
+Approach systematically:
+- Root cause analysis first
+- Consider edge cases
+- Document your reasoning
+- Verify assumptions with evidence`,
+
+  'visual-engineering': `
+Focus on:
+- Visual hierarchy and layout
+- Accessibility (ARIA, keyboard navigation)
+- Responsive design considerations
+- Design system consistency
+- User experience flow`,
+
+  artistry: `
+Explore creatively:
+- Generate multiple alternatives
+- Consider unconventional approaches
+- Balance creativity with practicality
+- Explain tradeoffs of each option`,
+
+  writing: `
+Focus on:
+- Clarity and conciseness
+- Accurate technical details
+- Consistent terminology
+- Appropriate examples
+- Proper formatting`,
+
+  'unspecified-low': '',  // Generic fallback, no specific guidance
+
+  'unspecified-high': `
+Approach thoroughly:
+- Consider the full context
+- Handle edge cases
+- Provide complete solution`,
+};
+
+/**
+ * Enhance a prompt with category-specific guidance.
+ * Appends domain-specific instructions to improve task execution quality.
+ *
+ * @param prompt - Original task prompt
+ * @param category - Delegation category
+ * @returns Enhanced prompt with category guidance (if any)
+ */
+export function enhancePromptWithCategory(
+  prompt: string,
+  category: DelegationCategory
+): string {
+  const append = CATEGORY_PROMPT_APPEND[category];
+  if (!append || append.trim() === '') {
+    return prompt;
+  }
+  return `${prompt}\n\n## Category Guidance (${category})${append}`;
+}
