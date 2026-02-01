@@ -41,8 +41,8 @@ GSD + OMC + OpenCode(참조) + Claude Code 기본 기능을 통합한 계획-실
 - [x] **Phase 18.5: Hook Bridge** - Claude Code 네이티브 훅 ↔ Ultra-Planning 훅 연결 브릿지
 - [x] **Phase 19: Extended Agent System** - SKIPPED (기존 에이전트로 충분, 불필요한 복잡성 방지)
 - [x] **Phase 20: Category-based Routing** - 카테고리 기반 모델 라우팅 (visual-engineering, ultrabrain, quick 등)
-- [ ] **Phase 21: Background Manager** - 백그라운드 에이전트 매니저 (동시성 제어, 태스크 큐, 알림)
-- [ ] **Phase 22: Test Coverage** - 테스트 커버리지 90+ 파일 확장
+- [x] **Phase 21: Background Manager** - 백그라운드 에이전트 매니저 (동시성 제어, 태스크 큐, 알림)
+- [x] **Phase 22: Test Coverage** - 테스트 커버리지 90+ 파일 확장
 
 ## Phase Details
 
@@ -602,19 +602,21 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 22-01-PLAN.md — 상태 관리 테스트 (StateManager, EventSystem, Checkpoint)
-- [ ] 22-02-PLAN.md — 오케스트레이션 테스트 (Ralplan, Ultrapilot, Swarm, Pipeline)
-- [ ] 22-03-PLAN.md — 훅 시스템 테스트 (HookRegistry, 개별 훅)
-- [ ] 22-04-PLAN.md — E2E 통합 테스트 (전체 워크플로우)
+- [ ] 22-01-PLAN.md — Core Documents and Orchestration Tests (schemas, task-parser, templates, ralplan, keywords)
+- [ ] 22-02-PLAN.md — State and Sync Module Tests (mode-registry, event-system, plan-parser, task-mapper, dependency-map)
+- [ ] 22-03-PLAN.md — Hooks and Quality Tests (file-guard, single-task, verification, lsp, ast)
+- [ ] 22-04-PLAN.md — Coverage Configuration and Integration (@vitest/coverage-v8, sync-pipeline, hook-chain integration tests)
 
 **Wave Structure:**
-- Wave 1: 22-01, 22-02 (parallel - domain tests)
-- Wave 2: 22-03 (depends on hook implementation)
-- Wave 3: 22-04 (E2E - depends on all)
+- Wave 1: 22-01 (foundation - core document and orchestration tests)
+- Wave 2: 22-02 (state and sync - depends on 22-01 patterns)
+- Wave 3: 22-03 (hooks and quality - depends on 22-02 patterns)
+- Wave 4: 22-04 (coverage config and integration - depends on all above)
 
 **참조:**
 - `references/oh-my-opencode/src/**/*.test.ts` - 90+ 테스트 파일
 - Vitest 테스트 패턴
+- `.planning/phases/22-test-coverage/22-RESEARCH.md` - Phase research
 
 ## Progress
 
@@ -646,8 +648,8 @@ Phases execute in numeric order: 1 → 2 → ... → 12 (v2 완료) → 13 → 1
 | 18.5. Hook Bridge | 1/1 | Complete | 2026-02-01 |
 | 19. Extended Agent System | 0/4 | Skipped | - |
 | 20. Category-based Routing | 2/2 | Complete | 2026-02-01 |
-| 21. Background Manager | 0/4 | Planned | - |
-| 22. Test Coverage | 0/4 | Planned | - |
+| 21. Background Manager | 4/4 | Complete | 2026-02-01 |
+| 22. Test Coverage | 4/4 | Complete | 2026-02-01 |
 
 ---
 *Roadmap created: 2026-01-26*
