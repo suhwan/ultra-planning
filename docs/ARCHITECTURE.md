@@ -278,6 +278,59 @@ Claude Code가 자동 발견할 수 있도록 심볼릭 링크 생성:
 ~/.claude/commands -> ~/.claude/registry/skills
 ```
 
+### 3.6 스킬 로더 v2.0 (디렉토리 구조)
+
+skill-loader.ts v2.0은 다양한 디렉토리 구조를 자동 감지하여 스킬을 로드합니다.
+
+#### 지원하는 구조
+
+```
+skills/
+├── build-fix.yaml              # (1) Flat YAML (기존 방식)
+├── quality/                    # (2) 카테고리 폴더
+│   ├── code-review.yaml        #     카테고리 내 YAML
+│   └── security-review/        #     카테고리 내 스킬 폴더
+│       ├── skill.yaml          #     (3) 하이브리드: skill.yaml 우선
+│       └── SKILL.md            #     (4) Fallback: SKILL.md frontmatter
+└── design-ui/                  # 카테고리 폴더
+    └── design-audit/           # 스킬 폴더
+        └── SKILL.md            # SKILL.md만 있는 경우
+```
+
+#### 로딩 우선순위
+
+| 우선순위 | 파일 | 용도 |
+|----------|------|------|
+| 1 | `skill.yaml` | 완전한 스킬 정의 (머신용) |
+| 2 | `SKILL.md` frontmatter | 기본 메타데이터 (fallback) |
+
+#### SKILL.md Frontmatter 예시
+
+```markdown
+---
+id: design-audit
+name: Design Audit
+version: "1.0"
+description: "UI/UX 디자인 품질 검토. Triggers: design review, UI audit"
+agents:
+  - designer
+  - architect
+---
+
+# Design Audit Skill
+
+스킬 상세 설명...
+```
+
+#### 자동 감지 로직
+
+```
+1. 파일인 경우 → .yaml이면 바로 로드
+2. 폴더인 경우:
+   a. skill.yaml 또는 SKILL.md 존재 → 스킬 폴더로 처리
+   b. 그 외 → 카테고리 폴더로 처리 (1단계 재귀)
+```
+
 ---
 
 ## 4. 컨텍스트 시스템
