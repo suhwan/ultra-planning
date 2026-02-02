@@ -24,3 +24,12 @@ coverage/
 # Environment
 .env
 .env.local
+
+# Backup files
+*.bak.*
+
+# Runtime state (OMC)
+.omc/
+
+# Ultraplan runtime state
+.ultraplan/state/

@@ -249,6 +249,7 @@ import {
   injectSpecificSkills,
   analyzeContext,
 } from './skills/index.js';
+import { getRegistryConfig } from './config/loader.js';
 
 // ============================================================================
 // Server Setup
@@ -265,6 +266,10 @@ const server = new Server(
     },
   }
 );
+
+// Initialize skill registry with config (loads global registry from ~/.claude/registry)
+const registryConfig = getRegistryConfig();
+getSkillRegistry(registryConfig);
 
 // ============================================================================
 // Tool Definitions

@@ -1,100 +1,36 @@
-# 스킬 정의서: TDD 가이드
 id: tdd-guide
 name: TDD 가이드
 version: "1.0"
-
 description: |
-  Test-Driven Development 방법론을 강제합니다.
-  테스트 먼저 작성하고, 실패 확인 후, 구현하는 흐름을 보장합니다.
-  80% 이상의 테스트 커버리지를 목표로 합니다.
-
+  테스트 주도 개발 가이드. Red-Green-Refactor 사이클 강제.
 use_cases:
-  - 새 기능 구현 시 테스트 우선 작성
-  - 버그 수정 시 회귀 테스트 작성
-  - 리팩토링 전 테스트 보장
-  - API 엔드포인트 테스트
-  - 유틸리티 함수 테스트
-
+  - TDD로 기능 개발
+  - 테스트 커버리지 확보
 triggers:
-  # 자동 트리거
-  auto_trigger:
-    - on_tdd_mode_enabled
-    - on_new_feature_task
-    - on_bug_fix_task
-
   keywords:
-    high:
-      - TDD
-      - 테스트 먼저
-      - test first
-      - red green refactor
-    medium:
-      - 테스트 작성
-      - 테스트 추가
-      - unit test
-    low:
-      - 테스트
-      - 검증
-
-capabilities:
-  - test_first           # 테스트 우선 강제
-  - coverage_check       # 커버리지 확인
-  - regression_test      # 회귀 테스트
-  - mock_guidance        # 모킹 가이드
-  - assertion_patterns   # 어설션 패턴
-
+    high: [TDD, 테스트 먼저, test first, 테스트 주도]
+    medium: [테스트 작성, 유닛 테스트, unit test]
+    low: [테스트]
+capabilities: [test_first_development, red_green_refactor]
 outputs:
-  - type: test_file
-    format: code
-  - type: coverage_report
-    format: text
-  - type: tdd_checklist
+  - type: test_plan
     format: markdown
-
 prompt_template: |
-  ## TDD-Guide 스킬 활성화
-
-  당신은 TDD 전문가입니다. Red-Green-Refactor 사이클을 엄격히 따릅니다.
-
-  ### TDD 사이클
-  1. **RED**: 실패하는 테스트 먼저 작성
-  2. **GREEN**: 테스트를 통과하는 최소 코드 작성
-  3. **REFACTOR**: 코드 정리 (테스트는 계속 통과)
-
-  ### 테스트 작성 규칙
-  - 하나의 테스트는 하나의 동작만 검증
-  - 테스트 이름은 명확하게: `should_[동작]_when_[조건]`
-  - AAA 패턴: Arrange, Act, Assert
-  - 외부 의존성은 모킹
-
-  ### 체크리스트
-  - [ ] 테스트 파일 생성/수정
-  - [ ] 테스트 실행 → 실패 확인
-  - [ ] 구현 코드 작성
-  - [ ] 테스트 실행 → 통과 확인
-  - [ ] 필요시 리팩토링
-
-  ### 금지 사항
-  - 테스트 없이 구현 코드 작성
-  - 구현 후 테스트 작성 (TDD 아님)
-  - 테스트 스킵
-
+  TDD를 적용하세요.
+  1. RED: 실패하는 테스트 먼저 작성
+  2. GREEN: 테스트 통과하는 최소 구현
+  3. REFACTOR: 코드 정리
 context:
   agents:
+    - tdd-guide
+    - tdd-guide-low
     - ultraplan-executor
-    - oh-my-claudecode:executor
-    - oh-my-claudecode:tdd-guide
-  phases:
-    - execution
-  trigger_events:
-    - tdd_mode_enabled
-    - new_feature
-    - bug_fix
-
+    - executor
+    - executor-high
+    - qa-tester
+    - qa-tester-high
+  phases: [execution, testing]
+  trigger_events: [on_tdd_mode]
 model_routing:
   default: sonnet
-  if_simple: haiku
-
-synergies:
-  - build-fix
-  - code-review
+synergies: [build-fix, code-review, ultraqa]

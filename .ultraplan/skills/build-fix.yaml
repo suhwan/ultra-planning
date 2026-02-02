@@ -1,103 +1,42 @@
-# 스킬 정의서: 빌드 에러 수정
 id: build-fix
 name: 빌드 에러 수정
 version: "1.0"
-
 description: |
   TypeScript, 빌드, 린트 에러를 최소한의 변경으로 수정합니다.
   아키텍처 변경 없이 빌드를 그린으로 만드는 것에 집중합니다.
-  OMC build-fixer 에이전트를 활용합니다.
-
 use_cases:
   - TypeScript 컴파일 에러 수정
   - 빌드 실패 복구
   - 린트 에러 자동 수정
-  - 타입 정의 누락 해결
-  - 임포트 에러 수정
-
 triggers:
-  # 에러 패턴
   error_patterns:
     - "error TS"
     - "SyntaxError"
     - "Cannot find module"
     - "Type .* is not assignable"
-    - "Property .* does not exist"
     - "npm ERR!"
     - "build failed"
-
-  # 키워드
   keywords:
-    high:
-      - 빌드 에러
-      - 타입 에러
-      - 컴파일 실패
-      - build failed
-      - type error
-    medium:
-      - 에러 수정
-      - fix error
-    low:
-      - 빨간줄
-      - 에러
-
-capabilities:
-  - typescript_fix       # TS 에러 수정
-  - import_resolution    # 임포트 해결
-  - type_inference       # 타입 추론
-  - lint_fix            # 린트 자동 수정
-  - minimal_diff        # 최소 변경
-
+    high: [빌드 에러, 타입 에러, 컴파일 실패, build failed, type error]
+    medium: [에러 수정, fix error]
+    low: [빨간줄, 에러]
+capabilities: [typescript_fix, build_fix, lint_fix]
 outputs:
-  - type: fixed_files
-    format: diff
-  - type: verification
-    format: command_output
-
-# 에이전트에 주입될 프롬프트
+  - type: fix_report
+    format: markdown
 prompt_template: |
-  ## Build-Fix 스킬 활성화
-
-  당신은 빌드 에러 수정 전문가입니다.
-
-  ### 원칙
-  1. **최소 변경**: 에러만 수정, 리팩토링 금지
-  2. **아키텍처 유지**: 구조 변경 금지
-  3. **검증 필수**: 수정 후 `npm run build` 확인
-
-  ### 수정 순서
-  1. 에러 메시지 분석 (파일:라인)
-  2. 최소한의 수정안 결정
-  3. 수정 적용
-  4. 빌드 재실행으로 검증
-
-  ### 금지 사항
-  - 새 파일 생성 (꼭 필요한 경우 제외)
-  - 기존 로직 변경
-  - 주석 추가/삭제
-  - 코드 정리
-
-# 적용 컨텍스트
+  빌드 에러가 발생했습니다. 최소한의 변경으로 수정하세요.
+  아키텍처를 변경하지 마세요. 빌드를 그린으로 만드는 것에 집중하세요.
 context:
   agents:
+    - build-fixer
+    - build-fixer-low
     - ultraplan-executor
-    - oh-my-claudecode:executor
-    - oh-my-claudecode:build-fixer
-  phases:
-    - execution
-    - verification
-  trigger_events:
-    - build_error
-    - type_error
-    - lint_error
-
-# 모델 라우팅
+    - executor
+    - executor-high
+    - gsd-debugger
+  phases: [execution]
+  trigger_events: [on_build_error]
 model_routing:
   default: sonnet
-  if_simple: haiku  # 단순 타입 에러
-  if_complex: opus  # 복잡한 의존성 문제
-
-# 시너지 스킬
-synergies:
-  - code-review
-  - security-review
+synergies: [tdd, tdd-guide, security-review, code-review]
