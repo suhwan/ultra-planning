@@ -1,0 +1,1 @@
+/home/ubuntu/.claude/registry/agents/gsd/gsd-integration-checker.md

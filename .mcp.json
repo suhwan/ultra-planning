@@ -4,6 +4,10 @@
       "command": "node",
       "args": ["./dist/mcp-server.js"],
       "cwd": "/home/ubuntu/code/ultra-planning"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--browser", "chromium"]
     }
   }
 }

@@ -16,7 +16,7 @@ import {
   filterTasksByStatus,
 } from './plan-parser.js';
 import type { TaskMapping, PlanSyncData } from './types.js';
-import type { AutoTask, CheckpointHumanVerifyTask, CheckpointDecisionTask } from '../documents/xml/types.js';
+import type { AutoTask, HumanVerifyTask, DecisionTask } from '../documents/xml/types.js';
 
 // Mock fs/promises
 vi.mock('fs/promises', () => ({
@@ -77,7 +77,16 @@ describe('parsePlanForSync', () => {
   it('should extract frontmatter fields (phase, plan, wave)', async () => {
     vi.mocked(readFile).mockResolvedValue('mocked content');
     vi.mocked(parsePlanMd).mockReturnValue({
-      frontmatter: { phase: '06', plan: 2, wave: 1 },
+      frontmatter: {
+        phase: '06',
+        plan: 2,
+        type: 'execute',
+        wave: 1,
+        depends_on: [],
+        files_modified: [],
+        autonomous: true,
+        must_haves: { truths: [], artifacts: [] }
+      },
       content: '<tasks></tasks>',
     });
     vi.mocked(parseTasksSection).mockReturnValue([]);
@@ -96,7 +105,16 @@ describe('parsePlanForSync', () => {
 
     vi.mocked(readFile).mockResolvedValue('mocked content');
     vi.mocked(parsePlanMd).mockReturnValue({
-      frontmatter: { phase: '06', plan: 1, wave: 1 },
+      frontmatter: {
+        phase: '06',
+        plan: 1,
+        type: 'execute',
+        wave: 1,
+        depends_on: [],
+        files_modified: [],
+        autonomous: true,
+        must_haves: { truths: [], artifacts: [] }
+      },
       content: '<tasks></tasks>',
     });
     vi.mocked(parseTasksSection).mockReturnValue(mockTasks);
@@ -110,7 +128,16 @@ describe('parsePlanForSync', () => {
   it('should return correct path', async () => {
     vi.mocked(readFile).mockResolvedValue('mocked content');
     vi.mocked(parsePlanMd).mockReturnValue({
-      frontmatter: { phase: '06', plan: 1, wave: 1 },
+      frontmatter: {
+        phase: '06',
+        plan: 1,
+        type: 'execute',
+        wave: 1,
+        depends_on: [],
+        files_modified: [],
+        autonomous: true,
+        must_haves: { truths: [], artifacts: [] }
+      },
       content: '',
     });
     vi.mocked(parseTasksSection).mockReturnValue([]);
@@ -124,7 +151,16 @@ describe('parsePlanForSync', () => {
   it('should use defaults for missing optional fields', async () => {
     vi.mocked(readFile).mockResolvedValue('mocked content');
     vi.mocked(parsePlanMd).mockReturnValue({
-      frontmatter: {}, // No phase, plan, wave specified
+      frontmatter: {
+        phase: 'my-phase',
+        plan: 1,
+        type: 'execute',
+        wave: 1,
+        depends_on: [],
+        files_modified: [],
+        autonomous: true,
+        must_haves: { truths: [], artifacts: [] }
+      }, // Provide all required fields
       content: '',
     });
     vi.mocked(parseTasksSection).mockReturnValue([]);
@@ -259,9 +295,10 @@ describe('formatTaskPrompt', () => {
   });
 
   it('should format checkpoint:human-verify task', () => {
-    const task: CheckpointHumanVerifyTask = {
+    const task: HumanVerifyTask = {
       type: 'checkpoint:human-verify',
       name: 'Verify UI looks correct',
+      gate: 'blocking',
       whatBuilt: 'New dashboard layout',
       howToVerify: 'Check the layout renders correctly',
       resumeSignal: 'User confirms UI is correct',
@@ -280,15 +317,17 @@ describe('formatTaskPrompt', () => {
   });
 
   it('should format checkpoint:decision task with options', () => {
-    const task: CheckpointDecisionTask = {
+    const task: DecisionTask = {
       type: 'checkpoint:decision',
       name: 'Choose database',
+      gate: 'blocking',
       decision: 'Which database to use',
       context: 'Need a database for user data',
       options: [
         { id: 'A', name: 'PostgreSQL', pros: 'Reliable', cons: 'Complex setup' },
         { id: 'B', name: 'SQLite', pros: 'Simple', cons: 'Limited concurrency' },
       ],
+      resumeSignal: 'User chooses an option',
     };
 
     const prompt = formatTaskPrompt(task);
@@ -336,7 +375,16 @@ describe('parseAndExtractMappings', () => {
 
     vi.mocked(readFile).mockResolvedValue('mocked content');
     vi.mocked(parsePlanMd).mockReturnValue({
-      frontmatter: { phase: '06', plan: 1, wave: 1 },
+      frontmatter: {
+        phase: '06',
+        plan: 1,
+        type: 'execute',
+        wave: 1,
+        depends_on: [],
+        files_modified: [],
+        autonomous: true,
+        must_haves: { truths: [], artifacts: [] }
+      },
       content: '<tasks></tasks>',
     });
     vi.mocked(parseTasksSection).mockReturnValue(mockTasks);
@@ -357,7 +405,16 @@ describe('parseAndExtractMappings', () => {
 
     vi.mocked(readFile).mockResolvedValue('mocked content');
     vi.mocked(parsePlanMd).mockReturnValue({
-      frontmatter: { phase: '06', plan: 1, wave: 1 },
+      frontmatter: {
+        phase: '06',
+        plan: 1,
+        type: 'execute',
+        wave: 1,
+        depends_on: [],
+        files_modified: [],
+        autonomous: true,
+        must_haves: { truths: [], artifacts: [] }
+      },
       content: '',
     });
     vi.mocked(parseTasksSection).mockReturnValue(mockTasks);
